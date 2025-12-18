@@ -35,25 +35,33 @@
   const overlay = document.createElement("div");
   overlay.className = "aiw-overlay";
 
+  const overlayClose = document.createElement("button");
+  overlayClose.className = "aiw-overlay-close";
+  overlayClose.setAttribute("aria-label", "Закрыть окно чата");
+  overlayClose.textContent = "✕";
+
   const panel = document.createElement("div");
-  panel.className = "aiw-panel " + (position === "left" ? "aiw-left" : "aiw-right");
+  panel.className = "aiw-panel";
   panel.innerHTML = `
-    <div class="aiw-header">
-      <div class="aiw-title">${escapeHtml(title)}</div>
-      <button class="aiw-close" title="Закрыть">✕</button>
-    </div>
-    <div class="aiw-body">
-      <div class="aiw-messages" id="aiw-msgs"></div>
-      <div class="aiw-status" id="aiw-status"></div>
-      <form class="aiw-form" id="aiw-form">
-        <input class="aiw-input" id="aiw-input" placeholder="Напишите сообщение..." autocomplete="off"/>
-        <button class="aiw-send" type="submit">Отправить</button>
-      </form>
+    <div class="aiw-card">
+      <div class="aiw-header">
+        <div class="aiw-title">${escapeHtml(title)}</div>
+        <button class="aiw-close" title="Закрыть">✕</button>
+      </div>
+      <div class="aiw-body">
+        <div class="aiw-messages" id="aiw-msgs"></div>
+        <div class="aiw-status" id="aiw-status"></div>
+        <form class="aiw-form" id="aiw-form">
+          <input class="aiw-input" id="aiw-input" placeholder="Ask me anything about your projects" autocomplete="off"/>
+          <button class="aiw-send" type="submit">Send</button>
+        </form>
+      </div>
     </div>
   `;
 
   document.body.appendChild(btn);
   document.body.appendChild(overlay);
+  document.body.appendChild(overlayClose);
   document.body.appendChild(panel);
 
   const closeBtn = panel.querySelector(".aiw-close");
@@ -137,22 +145,24 @@
 
   async function openPanel() {
     isOpen = true;
-    btn.classList.add("aiw-expanding");
+    btn.classList.add("aiw-hide");
     overlay.classList.add("aiw-show");
+    overlayClose.classList.add("aiw-visible");
     panel.classList.add("aiw-open");
     try {
       await ensureChat();
     } catch (e) {
       console.error(e);
     }
-    setTimeout(() => input.focus(), 50);
-    setTimeout(() => btn.classList.remove("aiw-expanding"), 650);
+    setTimeout(() => input.focus(), 120);
   }
 
   function closePanel() {
     isOpen = false;
     overlay.classList.remove("aiw-show");
+    overlayClose.classList.remove("aiw-visible");
     panel.classList.remove("aiw-open");
+    setTimeout(() => btn.classList.remove("aiw-hide"), 200);
   }
 
   btn.addEventListener("click", async () => {
@@ -164,6 +174,7 @@
   });
 
   closeBtn.addEventListener("click", closePanel);
+  overlayClose.addEventListener("click", closePanel);
   overlay.addEventListener("click", closePanel);
 
   form.addEventListener("submit", async (e) => {
