@@ -1,632 +1,618 @@
-diff --git a/widget/widget.css b/widget/widget.css
-index 4405af57b59c7bf37d2094250e1fb54cc61a0559..c15b696f932cfb9fc9a24036e928b51b988962a2 100644
---- a/widget/widget.css
-+++ b/widget/widget.css
-@@ -1,332 +1,211 @@
--:root {
--  --aiw-text: #0b1220;
--  --aiw-muted: #6b7284;
--  --aiw-white: rgba(255, 255, 255, 0.72);
--  --aiw-border: rgba(255, 255, 255, 0.65);
--  --aiw-gradient: radial-gradient(circle at 50% 100%, rgba(255, 165, 205, 0.6), rgba(255, 204, 229, 0) 55%),
--    radial-gradient(circle at 54% 100%, rgba(130, 174, 255, 0.6), rgba(130, 174, 255, 0) 52%),
--    linear-gradient(180deg, #f9f8fb 0%, #f9f8fb 35%, #f9f8fb 100%);
--  font-family: 'Inter', 'SF Pro Display', 'Segoe UI', system-ui, -apple-system, sans-serif;
+diff --git a/web-admin/admin.css b/web-admin/admin.css
+index f726d32f7cd95b28a343172e2264112e0c81d72a..f244c02dc3acdcd659ee943f4c5e3b9b4c85d11a 100644
+--- a/web-admin/admin.css
++++ b/web-admin/admin.css
+@@ -1,32 +1,95 @@
+-:root{--bg:#0b1220;--panel:#121a2b;--text:#e8eefc;--muted:#9fb3d9;--accent:#F58220;--bad:#ff6b6b;--good:#22c55e;--border:#1f2a44}
 +:root{
-+  --aiw-text:#111214;
-+  --aiw-muted:rgba(0,0,0,.55);
++  --bg:#f5f7fb;
++  --panel:#ffffff;
++  --text:#1f2937;
++  --muted:#6b7280;
++  --accent:#5d5af6;
++  --bad:#e11d48;
++  --good:#16a34a;
++  --border:#e5e7eb;
++  --shadow:0 12px 40px rgba(17,24,39,0.08);
++}
 +
-+  --aiw-bubble-bg: rgba(255,255,255,.72);
-+  --aiw-bubble-border: rgba(0,0,0,.08);
+ *{box-sizing:border-box}
+-body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,Arial}
+-.wrap{max-width:1200px;margin:24px auto;padding:0 14px}
+-h1{font-size:20px;margin:0 0 14px 0}
+-h2{font-size:16px;margin:0}
+-.card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px}
+-.grid{display:grid;grid-template-columns:1.1fr 1fr;gap:12px;align-items:start}
+-@media (max-width:980px){.grid{grid-template-columns:1fr}}
++body{margin:0;background:var(--bg);color:var(--text);font-family:"Inter",ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,Arial}
 +
-+  --aiw-input-bg: rgba(255,255,255,.78);
-+  --aiw-input-border: rgba(0,0,0,.10);
- }
- 
-+*{box-sizing:border-box}
++.wrap{max-width:1280px;margin:28px auto;padding:0 16px}
 +
- .aiw-fab {
-   position: fixed;
-   bottom: 24px;
-   z-index: 99999;
-   width: 64px;
-   height: 64px;
-   border-radius: 50%;
-   border: 0;
-   cursor: pointer;
--  box-shadow: 0 14px 40px rgba(106, 113, 255, 0.38);
-+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.18);
-   font-size: 24px;
-   line-height: 64px;
-   text-align: center;
-   background: radial-gradient(circle at 20% 20%, #8fa7ff, #6a71ff 45%, #ff8fb1 100%);
-   color: #fff;
-   transition: transform 0.3s ease, box-shadow 0.3s ease, opacity 0.35s ease;
-   overflow: hidden;
++h1{font-size:26px;margin:0 0 6px 0}
++h2{font-size:22px;margin:0}
++h3{margin:0;font-size:17px}
++
++.card{background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:18px;box-shadow:var(--shadow)}
++
++.loginCard{display:flex;justify-content:space-between;align-items:flex-start;gap:32px;max-width:720px;margin:0 auto}
++.loginForm{display:flex;flex-direction:column;gap:12px;width:320px}
++
++.appShell{display:grid;grid-template-columns:320px 1fr;gap:20px;align-items:start}
++.sidebar{background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:16px;box-shadow:var(--shadow);min-height:80vh}
++.logoRow{display:flex;justify-content:space-between;align-items:center}
++.logo{font-weight:800;font-size:18px}
++.section{display:flex;flex-direction:column;gap:10px}
++.labelRow{display:flex;justify-content:space-between;align-items:center;font-weight:600;font-size:14px}
++.sidebarFooter{margin-top:auto;display:flex;flex-direction:column;gap:8px}
++
++.content{display:flex;flex-direction:column;gap:18px}
++.page{background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:22px;box-shadow:var(--shadow)}
++.pageHead{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
++.eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin:0 0 6px 0;font-weight:700}
++
++.chatLayout{display:grid;grid-template-columns:340px 1fr;gap:16px;align-items:start}
++.chatListCard{background:linear-gradient(135deg,rgba(93,90,246,0.08),rgba(93,90,246,0.02));border:1px solid var(--border);border-radius:18px;padding:16px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px}
++.listHead{display:flex;justify-content:space-between;align-items:center}
++.placeholder{height:100%;display:flex;align-items:center;justify-content:center}
++.empty{text-align:center;padding:40px;background:rgba(93,90,246,0.04);border:1px dashed var(--border);border-radius:16px}
++
+ .row{display:flex;gap:10px;align-items:center}
+-.cardHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+-.muted{color:var(--muted);font-size:12px;margin-top:6px}
+-.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+-input,textarea,select{width:100%;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:#0b1220;color:var(--text);padding:10px 10px;font-size:14px;outline:none}
++.row.tight select{flex:1}
++
++.muted{color:var(--muted);font-size:13px;margin:0}
++.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;overflow-wrap:anywhere}
++
++input,textarea,select{width:100%;border-radius:12px;border:1px solid var(--border);background:#f9fafb;color:var(--text);padding:10px 12px;font-size:14px;outline:none;transition:border-color .2s,box-shadow .2s}
++input:focus,textarea:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(93,90,246,0.15);background:white}
+ textarea{resize:vertical}
+-button{border-radius:12px;border:0;background:var(--accent);color:#111827;padding:10px 12px;font-weight:800;cursor:pointer}
+-button.ghost{background:transparent;border:1px solid rgba(255,255,255,.14);color:var(--text);font-weight:700}
+-button.warn{background:#ef4444;color:white}
+-.list{display:flex;flex-direction:column;gap:8px;max-height:420px;overflow:auto;padding-right:6px}
+-.item{padding:10px;border:1px solid rgba(255,255,255,.08);border-radius:12px;cursor:pointer;background:rgba(0,0,0,.15)}
+-.item:hover{border-color:rgba(255,255,255,.2)}
+-.pill{display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.14);font-size:12px;color:var(--muted)}
+-.msgs{max-height:520px;overflow:auto;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px;background:rgba(0,0,0,.12);display:flex;flex-direction:column;gap:10px}
++
++button{border-radius:12px;border:1px solid transparent;background:var(--accent);color:white;padding:10px 14px;font-weight:700;cursor:pointer;transition:transform .1s ease,box-shadow .2s,background .2s}
++button:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(93,90,246,0.25)}
++button:active{transform:translateY(0)}
++button.ghost{background:transparent;color:var(--text);border-color:var(--border);box-shadow:none}
++button.ghost:hover{background:#eef2ff}
++button.icon{padding:8px 10px}
++button.text{color:var(--muted);border-color:transparent}
++button.primary{background:linear-gradient(135deg,#5d5af6,#7c5dfa);color:white}
++button.full{width:100%}
++
++.list{display:flex;flex-direction:column;gap:10px;max-height:620px;overflow:auto;padding-right:6px}
++.item{padding:12px;border:1px solid var(--border);border-radius:14px;cursor:pointer;background:white;transition:border-color .2s,transform .1s}
++.item:hover{border-color:var(--accent);transform:translateY(-1px)}
++.pill{display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;border:1px solid var(--border);font-size:12px;color:var(--muted);gap:6px}
++
++.msgs{max-height:620px;overflow:auto;border:1px solid var(--border);border-radius:14px;padding:12px;background:#f8fafc;display:flex;flex-direction:column;gap:10px}
+ .msg{display:flex}
+ .msg.user{justify-content:flex-end}
+ .msg.assistant,.msg.human{justify-content:flex-start}
+-.bubble{max-width:78%;padding:10px 12px;border-radius:14px;white-space:pre-wrap;word-break:break-word;font-size:14px;line-height:1.35}
+-.msg.user .bubble{background:#2563eb;color:white;border-bottom-right-radius:6px}
+-.msg.assistant .bubble{background:#111827;border:1px solid rgba(255,255,255,.08);border-bottom-left-radius:6px}
+-.msg.human .bubble{background:rgba(245,130,32,.18);border:1px solid rgba(245,130,32,.35);border-bottom-left-radius:6px}
+-.err{color:var(--bad);margin-top:8px;font-size:13px}
+-.ok{color:var(--good);font-size:12px}
++.bubble{max-width:78%;padding:12px 14px;border-radius:14px;white-space:pre-wrap;word-break:break-word;font-size:14px;line-height:1.35;box-shadow:var(--shadow);background:white}
++.msg.user .bubble{background:#5d5af6;color:white;box-shadow:none;border-bottom-right-radius:6px}
++.msg.assistant .bubble{background:white;border:1px solid var(--border);border-bottom-left-radius:6px}
++.msg.human .bubble{background:rgba(93,90,246,0.12);border:1px solid rgba(93,90,246,0.35);border-bottom-left-radius:6px}
++
++.err{color:var(--bad);margin-top:4px;font-size:13px}
++.ok{color:var(--good);font-size:13px}
++
++.settingsCard{display:flex;flex-direction:column;gap:16px}
++.formGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
++
++@media (max-width:1180px){
++  .appShell{grid-template-columns:1fr}
++  .sidebar{min-height:auto}
++}
++
++@media (max-width:980px){
++  .chatLayout{grid-template-columns:1fr}
++  .chatBox{order:2}
++  .chatListCard{order:1}
++}
+diff --git a/web-admin/admin.js b/web-admin/admin.js
+index 2300d8f21190b91867d32e191bd1453c404b1a58..719a54ac51e8c7d21a2a113f14852c8935e9b1b1 100644
+--- a/web-admin/admin.js
++++ b/web-admin/admin.js
+@@ -1,113 +1,123 @@
+ const $ = (s) => document.querySelector(s);
+ 
+ let selectedProjectId = null;
+ let selectedChatId = null;
+ let pollTimer = null;
++let projectsCache = [];
+ 
+ async function api(path, opts={}){
+   const r = await fetch(path, { credentials:"include", ...opts });
+   const ct = r.headers.get("content-type")||"";
+   const data = ct.includes("application/json") ? await r.json() : await r.text();
+   if(!r.ok) throw Object.assign(new Error(data?.error || "api_error"), { data, status:r.status });
+   return data;
  }
  
--.aiw-fab:hover {
--  transform: translateY(-2px) scale(1.05);
--  box-shadow: 0 18px 48px rgba(106, 113, 255, 0.45);
--}
--
--.aiw-fab:active {
--  transform: translateY(0) scale(0.97);
--}
--
--.aiw-fab.aiw-right {
--  right: 24px;
--}
--
--.aiw-fab.aiw-left {
--  left: 24px;
--}
--
--.aiw-fab.aiw-hide {
--  opacity: 0;
--  transform: scale(0.75);
--  pointer-events: none;
--}
--
--@keyframes aiw-overlay-expand {
--  from {
--    transform: scale(0.85);
--    opacity: 0;
--  }
--  to {
--    transform: scale(1);
--    opacity: 1;
--  }
--}
--
--@keyframes aiw-panel-rise {
--  0% {
--    transform: translateY(40px) scale(0.96);
--    opacity: 0;
--  }
--  60% {
--    transform: translateY(0) scale(1.02);
--    opacity: 1;
--  }
--  100% {
--    transform: translateY(0) scale(1);
--    opacity: 1;
--  }
--}
--
--@keyframes aiw-content-fade {
--  from { opacity: 0; transform: translateY(10px); }
--  to { opacity: 1; transform: translateY(0); }
--}
-+.aiw-fab:hover { transform: translateY(-2px) scale(1.05); box-shadow: 0 18px 48px rgba(0, 0, 0, 0.25); }
-+.aiw-fab:active { transform: translateY(0) scale(0.97); }
-+.aiw-fab.aiw-right { right: 24px; }
-+.aiw-fab.aiw-left { left: 24px; }
-+.aiw-fab.aiw-hide { opacity: 0; transform: scale(0.75); pointer-events: none; }
- 
- .aiw-overlay {
-   position: fixed;
-   inset: 0;
--  background: var(--aiw-gradient);
-+  background:
-+    radial-gradient(980px 600px at 28% 100%, rgba(247,213,246,.95) 0%, rgba(247,213,246,0) 58%),
-+    radial-gradient(980px 600px at 55% 100%, rgba(235,229,251,.95) 0%, rgba(235,229,251,0) 62%),
-+    radial-gradient(980px 600px at 20% 92%, rgba(255,233,249,.95) 0%, rgba(255,233,249,0) 58%),
-+    #ffffff;
-   opacity: 0;
-   transform: scale(0.98);
-   pointer-events: none;
-   transition: opacity 0.6s ease, transform 0.6s ease;
-   z-index: 99997;
-+  overflow: hidden;
+ function escapeHtml(s){
+   return String(s)
+     .replaceAll("&","&amp;")
+     .replaceAll("<","&lt;")
+     .replaceAll(">","&gt;")
+     .replaceAll('"',"&quot;")
+     .replaceAll("'","&#039;");
  }
  
--.aiw-overlay.aiw-show {
--  opacity: 1;
--  transform: scale(1);
--  pointer-events: auto;
--  animation: aiw-overlay-expand 0.75s ease;
--}
-+.aiw-overlay.aiw-show { opacity: 1; transform: scale(1); pointer-events: auto; }
- 
- .aiw-overlay-close {
-   position: fixed;
-   top: 18px;
-   right: 18px;
-   z-index: 100000;
-   border: 0;
-   width: 44px;
-   height: 44px;
-   border-radius: 14px;
-   background: rgba(255, 255, 255, 0.62);
-   color: #0b1220;
-   cursor: pointer;
-   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-   opacity: 0;
-   transform: translateY(-6px);
-   transition: opacity 0.3s ease, transform 0.3s ease;
-   backdrop-filter: blur(10px);
++function showPage(page){
++  const isSettings = page === "settings";
++  $("#pageChats").style.display = isSettings ? "none" : "block";
++  $("#pageSettings").style.display = isSettings ? "block" : "none";
++}
++
+ async function login(){
+   $("#loginErr").textContent = "";
+   const login = $("#login").value.trim();
+   const password = $("#password").value;
+   await api("/api/admin/login", {
+     method:"POST",
+     headers:{ "Content-Type":"application/json" },
+     body: JSON.stringify({ login, password })
+   });
+   $("#loginBox").style.display = "none";
+-  $("#app").style.display = "block";
++  $("#app").style.display = "grid";
+   await refreshProjects(true);
  }
  
- .aiw-overlay.aiw-show + .aiw-overlay-close,
--.aiw-overlay-close.aiw-visible {
--  opacity: 1;
--  transform: translateY(0);
--}
-+.aiw-overlay-close.aiw-visible { opacity: 1; transform: translateY(0); }
- 
- .aiw-panel {
-   position: fixed;
-   inset: 0;
-   display: flex;
--  align-items: center;
--  justify-content: center;
-+  align-items: stretch;
-+  justify-content: stretch;
-   z-index: 99998;
-   pointer-events: none;
-   opacity: 0;
--  transform: translateY(20px) scale(0.97);
-+  transform: translateY(12px) scale(0.98);
-   transition: opacity 0.35s ease, transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+ async function logout(){
+   await api("/api/admin/logout", { method:"POST" });
+   location.reload();
  }
  
--.aiw-panel.aiw-open {
--  opacity: 1;
--  transform: translateY(0) scale(1);
--  pointer-events: auto;
--  animation: aiw-panel-rise 0.6s ease;
--}
-+.aiw-panel.aiw-open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
- 
--.aiw-shell {
--  width: 100%;
--  height: 100%;
--  display: flex;
--  flex-direction: column;
--  align-items: center;
--  justify-content: space-between;
--  padding: 64px 22px 42px;
--  box-sizing: border-box;
-+.aiw-shell{
-+  width:100%;
-+  height:100%;
-+  display:flex;
-+  flex-direction:column;
-+  padding: 56px 64px 28px;
-+  gap: 22px;
-+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Inter", "Helvetica Neue", sans-serif;
-+  color:var(--aiw-text);
- }
- 
--.aiw-hero {
--  display: flex;
--  flex-direction: column;
--  align-items: center;
--  gap: 12px;
--  margin-top: 6px;
--  animation: aiw-content-fade 0.55s ease both;
-+.aiw-hero{
-+  display:flex;
-+  flex-direction:column;
-+  align-items:center;
-+  justify-content:flex-start;
-+  gap: 14px;
-+  padding-top: 48px;
-+  flex: 0 0 auto;
-+  pointer-events:none;
- }
- 
--.aiw-mark {
--  width: 58px;
--  height: 58px;
--  display: grid;
--  place-items: center;
--  background: rgba(255, 255, 255, 0.52);
--  border-radius: 18px;
--  border: 1px solid var(--aiw-border);
--  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.06);
--  backdrop-filter: blur(12px);
--}
-+.aiw-sparkle{ width:40px;height:40px;color:#0f0f10;opacity:.95; }
-+.aiw-title{ font-size: clamp(22px, 2.2vw, 34px); font-weight: 500; letter-spacing:.2px; }
- 
--.aiw-heading {
--  font-size: 26px;
--  font-weight: 700;
--  color: var(--aiw-text);
-+.aiw-chat{
-+  flex: 1 1 auto;
-+  min-height: 0;
-+  display:flex;
-+  flex-direction:column;
-+  justify-content:flex-end;
-+  gap: 18px;
-+  padding: 10px 0 6px;
-+  overflow:auto;
-+  scrollbar-width: none;
- }
- 
--.aiw-body {
--  width: 100%;
--  display: flex;
--  flex-direction: column;
--  align-items: center;
--  gap: 12px;
--  font-size: 16px;
--}
-+.aiw-chat::-webkit-scrollbar{width:0;height:0}
- 
--.aiw-chat {
--  width: min(960px, calc(100vw - 48px));
--  display: flex;
--  flex-direction: column;
--  gap: 16px;
--}
-+.aiw-msg{ display:flex; flex-direction:column; gap: 8px; max-width: 860px; }
-+.aiw-msg.aiw-left{ align-self:flex-start; }
-+.aiw-msg.aiw-right{ align-self:flex-end; }
- 
--.aiw-messages {
--  display: flex;
--  flex-direction: column;
--  gap: 16px;
--  padding: 20px 20px 16px;
--  background: linear-gradient(140deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.48));
--  border-radius: 26px;
--  border: 1px solid var(--aiw-border);
--  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.08);
--  backdrop-filter: blur(16px);
--  animation: aiw-content-fade 0.55s ease 0.1s both;
--}
-+.aiw-label{ font-size: 12px; letter-spacing: .08em; color: var(--aiw-muted); padding: 0 10px; }
- 
--.aiw-msg {
--  display: flex;
--}
--
--.aiw-user {
--  justify-content: flex-end;
--}
--
--.aiw-assistant {
--  justify-content: flex-start;
--}
--
--.aiw-bubble {
--  max-width: 72ch;
--  padding: 12px 14px;
--  border-radius: 18px;
--  white-space: pre-wrap;
--  word-break: break-word;
--  font-size: 16px;
--  line-height: 1.5;
--  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
-+.aiw-bubble{
-+  background: var(--aiw-bubble-bg);
-+  border: 1px solid var(--aiw-bubble-border);
-+  border-radius: 12px;
-+  padding: 14px 16px;
-+  box-shadow: 0 10px 22px rgba(0,0,0,.05);
-+  backdrop-filter: blur(10px);
-+  -webkit-backdrop-filter: blur(10px);
-+  width: fit-content;
-+  max-width: 720px;
- }
- 
--.aiw-user .aiw-bubble {
--  background: linear-gradient(135deg, rgba(140, 189, 255, 0.78), rgba(158, 132, 255, 0.82));
--  color: #f9fbff;
--  border-bottom-right-radius: 10px;
--}
-+.aiw-msg.aiw-left .aiw-bubble{ border-top-left-radius: 8px; }
-+.aiw-msg.aiw-right .aiw-bubble{ border-top-right-radius: 8px; }
- 
--.aiw-assistant .aiw-bubble {
--  background: linear-gradient(135deg, rgba(255, 184, 214, 0.7), rgba(167, 191, 255, 0.7));
--  color: #0c0f1a;
--  border: 1px solid rgba(255, 255, 255, 0.6);
--  border-bottom-left-radius: 10px;
-+.aiw-bubble p{
-+  margin:0;
-+  font-size: 14px;
-+  line-height: 1.35;
-+  color: rgba(0,0,0,.75);
-+  white-space: pre-line;
- }
- 
-+.aiw-composerWrap{ flex: 0 0 auto; display:flex; justify-content:center; padding-top: 10px; }
- 
--.aiw-status {
--  padding: 0 4px;
--  color: var(--aiw-muted);
--  font-size: 13px;
--  min-height: 20px;
--  font-weight: 600;
--  animation: aiw-content-fade 0.45s ease 0.18s both;
--}
--
--.aiw-form {
--  display: flex;
--  align-items: center;
-+.aiw-composer{
-+  width: min(980px, 100%);
-+  display:flex;
-+  align-items:center;
-   gap: 12px;
--  padding: 12px 14px 12px 18px;
--  border-radius: 20px;
--  background: rgba(255, 255, 255, 0.82);
--  border: 1px solid rgba(255, 255, 255, 0.7);
--  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.08);
--  backdrop-filter: blur(14px);
--  animation: aiw-content-fade 0.55s ease 0.2s both;
--}
--
--.aiw-input {
--  flex: 1;
--  border-radius: 14px;
--  border: 1px solid rgba(12, 15, 26, 0.04);
--  background: rgba(255, 255, 255, 0.6);
--  color: var(--aiw-text);
-+  background: var(--aiw-input-bg);
-+  border: 1px solid var(--aiw-input-border);
-+  border-radius: 10px;
-   padding: 14px 16px;
--  font-size: 15px;
--  outline: none;
--  box-shadow: inset 0 1px 1px rgba(15, 23, 42, 0.08);
--}
--
--.aiw-input::placeholder {
--  color: #9ba3b5;
--}
--
--.aiw-input:focus {
--  border-color: rgba(121, 132, 255, 0.6);
--  box-shadow: 0 0 0 3px rgba(121, 132, 255, 0.18);
-+  box-shadow: 0 12px 26px rgba(0,0,0,.06);
-+  backdrop-filter: blur(10px);
-+  -webkit-backdrop-filter: blur(10px);
- }
- 
--.aiw-send {
--  border-radius: 14px;
--  border: 0;
--  background: linear-gradient(135deg, #93a2ff, #dca1ff);
--  color: #fff;
--  width: 44px;
--  height: 44px;
--  display: grid;
--  place-items: center;
--  cursor: pointer;
--  box-shadow: 0 14px 30px rgba(106, 113, 255, 0.28);
--  transition: transform 0.2s ease, box-shadow 0.2s ease;
-+.aiw-input{
-+  border:0;
-+  outline:0;
-+  background:transparent;
-+  width:100%;
-+  font-size: 16px;
-+  color: rgba(0,0,0,.72);
- }
- 
--.aiw-send svg {
--  width: 18px;
--  height: 18px;
--}
-+.aiw-input::placeholder{ color: rgba(0,0,0,.35); }
- 
--.aiw-send:hover {
--  transform: translateY(-1px);
--  box-shadow: 0 18px 36px rgba(106, 113, 255, 0.38);
-+.aiw-send{
-+  width: 38px;
-+  height: 38px;
-+  border:0;
-+  background:transparent;
-+  display:grid;
-+  place-items:center;
-+  padding:0;
-+  cursor:pointer;
-+  opacity:.7;
- }
- 
--.aiw-send:active {
--  transform: translateY(1px);
--}
-+.aiw-send svg{width:28px;height:28px}
-+.aiw-send:hover{opacity:1}
- 
--.aiw-panel .aiw-body,
--.aiw-panel .aiw-hero {
--  opacity: 0;
--  transition: opacity 0.35s ease 0.2s;
--}
-+.aiw-status{ font-size: 13px; color: var(--aiw-muted); min-height: 18px; text-align:center; }
- 
--.aiw-panel.aiw-open .aiw-body,
--.aiw-panel.aiw-open .aiw-hero {
--  opacity: 1;
-+@media (max-width: 900px){
-+  .aiw-shell{padding: 40px 18px 18px;}
-+  .aiw-hero{padding-top: 28px;}
-+  .aiw-bubble{max-width: min(720px, 82vw);}
-+  .aiw-composer{width: 100%;}
- }
-diff --git a/widget/widget.js b/widget/widget.js
-index b795bff89331eb9d002ae066af6827f0ce99ea65..de4d13317236b0413caa89be7010f2950b253734 100644
---- a/widget/widget.js
-+++ b/widget/widget.js
-@@ -23,136 +23,148 @@
-     visitorId = (crypto?.randomUUID?.() || String(Math.random()).slice(2) + Date.now());
-     localStorage.setItem(visitorKey, visitorId);
+ async function refreshProjects(autoSelectFirst=false){
+   const j = await api("/api/admin/projects");
+   const items = j.items || [];
++  projectsCache = items;
+   const sel = $("#projectSelect");
+   sel.innerHTML = "";
+   for(const p of items){
+     const opt = document.createElement("option");
+     opt.value = p.id;
+-    opt.textContent = `${p.name} — ${p.id}`;
++    opt.textContent = p.name;
+     sel.appendChild(opt);
    }
  
-   let chatId = null;
-   let isOpen = false;
+   if(autoSelectFirst && items[0]){
+     selectedProjectId = items[0].id;
+     sel.value = selectedProjectId;
+   } else if(selectedProjectId){
+     sel.value = selectedProjectId;
+   } else if(items[0]){
+     selectedProjectId = items[0].id;
+     sel.value = selectedProjectId;
+   }
  
-   // UI
-   const btn = document.createElement("button");
-   btn.className = "aiw-fab " + (position === "left" ? "aiw-left" : "aiw-right");
-   btn.innerHTML = "💬";
+   if(selectedProjectId) await loadProject(selectedProjectId);
+   await refreshChats();
+ }
  
-   const overlay = document.createElement("div");
-   overlay.className = "aiw-overlay";
+ async function createProject(){
+-  const name = $("#newName").value.trim() || "New Project";
++  const name = prompt("Название проекта", "Новый проект")?.trim();
++  if(!name) return;
+   const j = await api("/api/admin/projects", {
+     method:"POST",
+     headers:{ "Content-Type":"application/json" },
+     body: JSON.stringify({ name, openai_api_key:"", assistant_id:"", instructions:"", allowed_origins:[] })
+   });
+-  $("#newName").value = "";
+   selectedProjectId = j.project.id;
+   await refreshProjects(false);
+   $("#projectSelect").value = selectedProjectId;
+   await loadProject(selectedProjectId);
+   await refreshChats();
+ }
  
-   const overlayClose = document.createElement("button");
-   overlayClose.className = "aiw-overlay-close";
-   overlayClose.setAttribute("aria-label", "Закрыть окно чата");
-   overlayClose.textContent = "✕";
+ async function loadProject(projectId){
+   const j = await api(`/api/admin/projects/${projectId}`);
+   const p = j.project;
+   selectedProjectId = p.id;
  
-   const panel = document.createElement("div");
-   panel.className = "aiw-panel";
-   panel.innerHTML = `
-     <div class="aiw-shell">
-       <div class="aiw-hero">
--        <div class="aiw-mark" aria-hidden="true">
--          <svg width="26" height="26" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
--            <path d="M13 0.75C13.4142 0.75 13.75 1.08579 13.75 1.5V4.25C13.75 4.66421 13.4142 5 13 5C12.5858 5 12.25 4.66421 12.25 4.25V1.5C12.25 1.08579 12.5858 0.75 13 0.75Z" fill="#0B1220"/>
--            <path d="M13 21C13.4142 21 13.75 21.3358 13.75 21.75V24.5C13.75 24.9142 13.4142 25.25 13 25.25C12.5858 25.25 12.25 24.9142 12.25 24.5V21.75C12.25 21.3358 12.5858 21 13 21Z" fill="#0B1220"/>
--            <path d="M21 13C21 13.4142 21.3358 13.75 21.75 13.75H24.5C24.9142 13.75 25.25 13.4142 25.25 13C25.25 12.5858 24.9142 12.25 24.5 12.25H21.75C21.3358 12.25 21 12.5858 21 13Z" fill="#0B1220"/>
--            <path d="M0.75 13C0.75 13.4142 1.08579 13.75 1.5 13.75H4.25C4.66421 13.75 5 13.4142 5 13C5 12.5858 4.66421 12.25 4.25 12.25H1.5C1.08579 12.25 0.75 12.5858 0.75 13Z" fill="#0B1220"/>
--            <circle cx="13" cy="13" r="3.25" stroke="#0B1220" stroke-width="1.5"/>
--          </svg>
--        </div>
--        <div class="aiw-heading">Ask our AI anything</div>
-+        <svg class="aiw-sparkle" viewBox="0 0 64 64" fill="currentColor" aria-hidden="true">
-+          <path d="M33.6 10.2c.4-1.5 2.5-1.5 2.9 0l1.5 5.3c.1.4.4.7.8.8l5.3 1.5c1.5.4 1.5 2.5 0 2.9l-5.3 1.5c-.4.1-.7.4-.8.8l-1.5 5.3c-.4 1.5-2.5 1.5-2.9 0l-1.5-5.3c-.1-.4-.4-.7-.8-.8L26 20.7c-1.5-.4-1.5-2.5 0-2.9l5.3-1.5c.4-.1.7-.4.8-.8l1.5-5.3z"/>
-+          <path d="M18.4 28.8c.3-1.1 1.9-1.1 2.2 0l1 3.6c.1.3.3.5.6.6l3.6 1c1.1.3 1.1 1.9 0 2.2l-3.6 1c-.3.1-.5.3-.6.6l-1 3.6c-.3 1.1-1.9 1.1-2.2 0l-1-3.6c-.1-.3-.3-.5-.6-.6l-3.6-1c-1.1-.3-1.1-1.9 0-2.2l3.6-1c.3-.1.5-.3.6-.6l1-3.6z"/>
-+        </svg>
-+        <div class="aiw-title">Ask our AI anything</div>
++  const projectName = projectsCache.find(x => x.id === p.id)?.name || "Проект";
++  $("#projectBadge").textContent = projectName;
+   $("#projectId").textContent = p.id;
+   $("#apiKey").value = p.openai_api_key || "";
+   $("#assistantId").value = p.assistant_id || "";
+   $("#instructions").value = p.instructions || "";
+   $("#origins").value = (p.allowed_origins || []).join("\n");
+ }
+ 
+ async function saveProject(){
+   if(!selectedProjectId) return;
+   $("#saveOk").textContent = "";
+ 
+   const openai_api_key = $("#apiKey").value.trim();
+   const assistant_id = $("#assistantId").value.trim();
+   const instructions = $("#instructions").value;
+   const allowed_origins = $("#origins").value
+     .split("\n")
+     .map(s => s.trim())
+     .filter(Boolean);
+ 
+   await api(`/api/admin/projects/${selectedProjectId}`, {
+     method:"PATCH",
+     headers:{ "Content-Type":"application/json" },
+     body: JSON.stringify({ openai_api_key, assistant_id, instructions, allowed_origins })
+   });
+ 
+@@ -130,50 +140,51 @@ async function refreshChats(){
+ function renderChats(items){
+   const box = $("#chatList");
+   box.innerHTML = "";
+   if(!items.length){
+     box.innerHTML = `<div class="muted">Пока нет чатов</div>`;
+     return;
+   }
+   for(const c of items){
+     const div = document.createElement("div");
+     div.className = "item";
+     div.innerHTML = `
+       <div class="row" style="justify-content:space-between">
+         <div class="mono">${escapeHtml(c.id)}</div>
+         <span class="pill">${escapeHtml(c.mode)} • ${escapeHtml(c.status)}</span>
        </div>
--      <div class="aiw-body">
--        <div class="aiw-messages" id="aiw-msgs"></div>
--        <div class="aiw-status" id="aiw-status"></div>
--        <form class="aiw-form" id="aiw-form">
+       <div class="muted">updated: ${new Date(c.updated_at).toLocaleString()}</div>
+       <div class="muted">visitor: ${escapeHtml(c.visitor_id || "-")}</div>
+     `;
+     div.addEventListener("click", ()=> openChat(c.id));
+     box.appendChild(div);
+   }
+ }
+ 
+ async function openChat(chatId){
+   selectedChatId = chatId;
++  $("#chatPlaceholder").style.display = "none";
+   $("#chatBox").style.display = "block";
+   $("#chatId").textContent = chatId;
+   await refreshChatView();
+   startPolling();
+ }
+ 
+ async function refreshChatView(){
+   if(!selectedChatId) return;
+   const items = await api(`/api/admin/chats/${selectedChatId}/messages`);
+   renderMessages(items.items || []);
+ 
+   const chats = await api(`/api/admin/projects/${selectedProjectId}/chats`);
+   const chat = (chats.items || []).find(x => x.id === selectedChatId);
+   $("#chatMode").textContent = chat ? chat.mode : "unknown";
+ }
+ 
+ function renderMessages(items){
+   const box = $("#messages");
+   box.innerHTML = "";
+   for(const m of items){
+     const div = document.createElement("div");
+     div.className = "msg " + m.role;
+     div.innerHTML = `<div class="bubble">${escapeHtml(m.content)}</div>`;
+     box.appendChild(div);
+   }
+@@ -195,41 +206,50 @@ async function takeover(){
+ }
+ 
+ async function release(){
+   if(!selectedChatId) return;
+   await api(`/api/admin/chats/${selectedChatId}/release`, { method:"POST" });
+   await refreshChats();
+   await refreshChatView();
+ }
+ 
+ async function sendHuman(e){
+   e.preventDefault();
+   if(!selectedChatId) return;
+   const textEl = $("#humanText");
+   const text = textEl.value.trim();
+   if(!text) return;
+ 
+   await api(`/api/admin/chats/${selectedChatId}/message`, {
+     method:"POST",
+     headers:{ "Content-Type":"application/json" },
+     body: JSON.stringify({ text })
+   });
+   textEl.value = "";
+   await refreshChatView();
+ }
+ 
++function resetChatView(){
++  selectedChatId = null;
++  $("#chatBox").style.display = "none";
++  $("#chatPlaceholder").style.display = "flex";
++}
 +
-+      <div class="aiw-chat" aria-label="Chat messages" id="aiw-msgs"></div>
-+      <div class="aiw-status" id="aiw-status"></div>
+ $("#btnLogin").addEventListener("click", ()=> login().catch(e => $("#loginErr").textContent = "Ошибка входа"));
+ $("#btnLogout").addEventListener("click", ()=> logout().catch(()=>{}));
+ $("#btnRefreshProjects").addEventListener("click", ()=> refreshProjects(false).catch(()=>{}));
+ $("#btnCreateProject").addEventListener("click", ()=> createProject().catch(()=>{}));
+ $("#btnSaveProject").addEventListener("click", ()=> saveProject().catch(()=>{}));
+ $("#btnRefreshChats").addEventListener("click", ()=> refreshChats().catch(()=>{}));
+ $("#projectSelect").addEventListener("change", async (e)=>{
+   selectedProjectId = e.target.value;
+-  selectedChatId = null;
+-  $("#chatBox").style.display = "none";
++  resetChatView();
+   await loadProject(selectedProjectId);
+   await refreshChats();
+ });
+ $("#btnTakeover").addEventListener("click", ()=> takeover().catch(()=>{}));
+ $("#btnRelease").addEventListener("click", ()=> release().catch(()=>{}));
+ $("#humanForm").addEventListener("submit", sendHuman);
++$("#btnOpenSettings").addEventListener("click", ()=> showPage("settings"));
++$("#btnBackToChats").addEventListener("click", ()=> showPage("chats"));
 +
-+      <div class="aiw-composerWrap">
-+        <form class="aiw-composer" id="aiw-form" role="group" aria-label="Message composer">
-           <input class="aiw-input" id="aiw-input" placeholder="Ask me anything about your projects" autocomplete="off"/>
-           <button class="aiw-send" type="submit" aria-label="Send">
--            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
--              <path d="M3.5 12L20.5 3.5L16 20.5L12.5 13.5L3.5 12Z" stroke="white" stroke-width="1.6" stroke-linejoin="round"/>
-+            <svg viewBox="0 0 24 24" fill="none" stroke="rgba(130,140,155,.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-+              <path d="M22 2L11 13" />
-+              <path d="M22 2L15 22l-4-9-9-4 20-7z" />
-             </svg>
-           </button>
-         </form>
++showPage("chats");
+diff --git a/web-admin/index.html b/web-admin/index.html
+index 71728f273570024bb77ae8f85f256fb190a2b6f5..18a95ed98f1f62a76bcc9158a3cf24002638940f 100644
+--- a/web-admin/index.html
++++ b/web-admin/index.html
+@@ -1,119 +1,167 @@
+ <!doctype html>
+ <html lang="ru">
+ <head>
+   <meta charset="utf-8"/>
+   <meta name="viewport" content="width=device-width, initial-scale=1"/>
+   <title>Admin — AI Widget</title>
+   <link rel="stylesheet" href="/admin/admin.css"/>
+ </head>
+ <body>
+   <div class="wrap">
+-    <h1>AI Widget — Админка (мультиклиент)</h1>
+-
+-    <div id="loginBox" class="card">
+-      <h2>Вход</h2>
+-      <div class="row">
++    <div id="loginBox" class="card loginCard">
++      <div>
++        <h1>AI Widget — Админка</h1>
++        <p class="muted">Управление проектами и чатами в едином интерфейсе.</p>
++      </div>
++      <div class="loginForm">
+         <input id="login" placeholder="Логин" value="admin"/>
+         <input id="password" placeholder="Пароль" type="password"/>
+         <button id="btnLogin">Войти</button>
++        <div class="muted">Пароль берётся из переменной окружения <b>ADMIN_PASSWORD</b>.</div>
++        <div id="loginErr" class="err"></div>
        </div>
+-      <div class="muted">Пароль берётся из переменной окружения <b>ADMIN_PASSWORD</b>.</div>
+-      <div id="loginErr" class="err"></div>
      </div>
-   `;
  
-   document.body.appendChild(btn);
-   document.body.appendChild(overlay);
-   document.body.appendChild(overlayClose);
-   document.body.appendChild(panel);
+-    <div id="app" style="display:none">
+-      <div class="grid">
+-        <div class="card">
+-          <div class="cardHead">
+-            <h2>Проекты (клиенты)</h2>
+-            <button id="btnLogout" class="ghost">Выйти</button>
+-          </div>
++    <div id="app" class="appShell" style="display:none">
++      <aside class="sidebar">
++        <div class="logoRow">
++          <div class="logo">AI Widget</div>
++          <button id="btnCreateProject" class="primary">+ Новый проект</button>
++        </div>
  
-   const form = panel.querySelector("#aiw-form");
-   const input = panel.querySelector("#aiw-input");
-   const msgs = panel.querySelector("#aiw-msgs");
-   const statusEl = panel.querySelector("#aiw-status");
+-          <div class="row">
+-            <select id="projectSelect"></select>
+-            <button id="btnRefreshProjects" class="ghost">Обновить</button>
++        <div class="section">
++          <div class="labelRow">
++            <label for="projectSelect">Проекты</label>
++            <button id="btnRefreshProjects" class="icon ghost" title="Обновить">⟳</button>
+           </div>
++          <select id="projectSelect"></select>
++        </div>
  
-   function setStatus(text) {
-     statusEl.textContent = text || "";
-   }
+-          <div style="height:10px"></div>
+-
+-          <h3 style="margin:10px 0 6px 0;font-size:14px">Создать проект</h3>
+-          <div class="row">
+-            <input id="newName" placeholder="Название проекта (клиент/сайт)"/>
+-            <button id="btnCreateProject">Создать</button>
++        <div class="section">
++          <div class="labelRow">
++            <label>Фильтр чатов</label>
++            <button id="btnRefreshChats" class="icon ghost" title="Обновить">⟳</button>
+           </div>
+-          <div class="muted">После создания заполните assistant_id и allowed_origins.</div>
+-
+-          <div style="height:14px"></div>
+-          <h3 style="margin:0 0 6px 0;font-size:14px">Настройки проекта</h3>
+-          <div class="muted">Project ID (вставляется в data-project-id):</div>
+-          <div class="mono" id="projectId"></div>
+-
+-          <div style="height:10px"></div>
+-          <div class="muted">OpenAI API key (клиента)</div>
+-          <input id="apiKey" placeholder="sk-..."/>
++          <div class="row tight">
++            <select id="filterMode">
++              <option value="">Все режимы</option>
++              <option value="assistant">assistant</option>
++              <option value="human">human</option>
++            </select>
++            <select id="filterStatus">
++              <option value="">Все статусы</option>
++              <option value="open">open</option>
++              <option value="closed">closed</option>
++            </select>
++          </div>
++        </div>
  
-   function append(role, text) {
-     const item = document.createElement("div");
--    item.className = "aiw-msg aiw-" + role;
--    item.innerHTML = `<div class="aiw-bubble">${escapeHtml(text)}</div>`;
-+    const isUser = role === "user";
-+    item.className = "aiw-msg " + (isUser ? "aiw-right" : "aiw-left");
+-          <div style="height:10px"></div>
+-          <div class="muted">OpenAI assistant_id</div>
+-          <input id="assistantId" placeholder="asst_..."/>
++        <div class="sidebarFooter">
++          <button id="btnOpenSettings" class="ghost full">Настройки проекта</button>
++          <button id="btnLogout" class="ghost text">Выйти</button>
++        </div>
++      </aside>
 +
-+    const label = document.createElement("div");
-+    label.className = "aiw-label";
-+    label.textContent = isUser ? "ME" : "OUR AI";
++      <main class="content">
++        <section id="pageChats" class="page">
++          <div class="pageHead">
++            <div>
++              <p class="eyebrow">Работа с чатами</p>
++              <h2>Чаты из виджета</h2>
++              <p class="muted">Следите за диалогами пользователей и подключайтесь при необходимости.</p>
++            </div>
++          </div>
+ 
+-          <div style="height:10px"></div>
+-          <div class="muted">Allowed origins (по одному в строке)</div>
+-          <textarea id="origins" rows="4" placeholder="https://clientsite.com&#10;https://www.clientsite.com"></textarea>
++          <div class="chatLayout">
++            <div class="chatListCard">
++              <div class="listHead">
++                <h3>Чаты проекта</h3>
++                <span id="projectBadge" class="pill muted"></span>
++              </div>
++              <div id="chatList" class="list"></div>
++            </div>
+ 
+-          <div style="height:10px"></div>
+-          <div class="muted">Инструкция (additional_instructions)</div>
+-          <textarea id="instructions" rows="6" placeholder="Инструкция для ассистента..."></textarea>
++            <div class="chatBox card" id="chatBox" style="display:none">
++              <div class="cardHead">
++                <div>
++                  <p class="eyebrow">Активный чат</p>
++                  <h3 class="mono" id="chatId"></h3>
++                </div>
++                <div class="row">
++                  <span class="pill" id="chatMode"></span>
++                  <button id="btnTakeover" class="ghost">Takeover</button>
++                  <button id="btnRelease" class="ghost">Release</button>
++                </div>
++              </div>
 +
-+    const bubble = document.createElement("div");
-+    bubble.className = "aiw-bubble";
-+    const p = document.createElement("p");
-+    p.textContent = text;
-+    bubble.appendChild(p);
++              <div id="messages" class="msgs"></div>
 +
-+    item.appendChild(label);
-+    item.appendChild(bubble);
++              <form id="humanForm" class="row" style="margin-top:10px">
++                <input id="humanText" placeholder="Ответить как оператор..." />
++                <button type="submit">Отправить</button>
++              </form>
++              <div class="muted" style="margin-top:8px">
++                Human-ответ сохраняется и синхронизируется в OpenAI thread как <b>[OPERATOR] ...</b>
++              </div>
++            </div>
+ 
+-          <div class="row">
+-            <button id="btnSaveProject">Сохранить</button>
+-            <span id="saveOk" class="ok"></span>
++            <div class="placeholder" id="chatPlaceholder">
++              <div class="empty">
++                <p class="eyebrow">Нет выбранного чата</p>
++                <h3>Выберите чат слева, чтобы открыть переписку</h3>
++                <p class="muted">Чаты обновляются в реальном времени. Используйте фильтры в панели слева.</p>
++              </div>
++            </div>
+           </div>
+-        </div>
+-
+-        <div class="card">
+-          <div class="cardHead">
+-            <h2>Чаты проекта</h2>
+-            <div class="row" style="gap:8px">
+-              <select id="filterMode">
+-                <option value="">Все режимы</option>
+-                <option value="assistant">assistant</option>
+-                <option value="human">human</option>
+-              </select>
+-              <select id="filterStatus">
+-                <option value="">Все статусы</option>
+-                <option value="open">open</option>
+-                <option value="closed">closed</option>
+-              </select>
+-              <button id="btnRefreshChats" class="ghost">Обновить</button>
++        </section>
 +
-     msgs.appendChild(item);
-     msgs.scrollTop = msgs.scrollHeight;
--    return item;
-+    return p;
-   }
++        <section id="pageSettings" class="page" style="display:none">
++          <div class="pageHead">
++            <div>
++              <p class="eyebrow">Настройки</p>
++              <h2>Настройки проекта</h2>
++              <p class="muted">Изменяйте ключи OpenAI, разрешённые домены и инструкции ассистента.</p>
++            </div>
++            <div class="row">
++              <button id="btnBackToChats" class="ghost">← Назад к чатам</button>
+             </div>
+           </div>
+-          <div id="chatList" class="list"></div>
+-        </div>
+-      </div>
  
-   async function ensureChat() {
-     if (chatId) return chatId;
-     const r = await fetch(`${BASE}/api/widget/${projectId}/chat/start`, {
-       method: "POST",
-       headers: { "Content-Type": "application/json" },
-       body: JSON.stringify({ visitorId }),
-     });
-     const j = await r.json();
-     if (!r.ok) throw new Error(j?.error || "start_failed");
-     chatId = j.chatId;
-     return chatId;
-   }
+-      <div class="card" id="chatBox" style="display:none">
+-        <div class="cardHead">
+-          <h2>Чат: <span class="mono" id="chatId"></span></h2>
+-          <div class="row">
+-            <span class="pill" id="chatMode"></span>
+-            <button id="btnTakeover" class="warn">Takeover</button>
+-            <button id="btnRelease" class="ghost">Release</button>
+-          </div>
+-        </div>
++          <div class="settingsCard card">
++            <div class="muted">Project ID (вставляется в data-project-id):</div>
++            <div class="mono" id="projectId"></div>
++
++            <div class="formGrid">
++              <div>
++                <label class="muted">OpenAI API key (клиента)</label>
++                <input id="apiKey" placeholder="sk-..."/>
++              </div>
++              <div>
++                <label class="muted">OpenAI assistant_id</label>
++                <input id="assistantId" placeholder="asst_..."/>
++              </div>
++            </div>
  
-   async function sendMessage(text) {
-     await ensureChat();
+-        <div id="messages" class="msgs"></div>
++            <div>
++              <label class="muted">Allowed origins (по одному в строке)</label>
++              <textarea id="origins" rows="4" placeholder="https://clientsite.com&#10;https://www.clientsite.com"></textarea>
++            </div>
  
-     append("user", text);
-     input.value = "";
-     input.focus();
+-        <form id="humanForm" class="row" style="margin-top:10px">
+-          <input id="humanText" placeholder="Ответить как оператор..." />
+-          <button type="submit">Отправить</button>
+-        </form>
+-        <div class="muted" style="margin-top:8px">
+-          Human-ответ сохраняется и синхронизируется в OpenAI thread как <b>[OPERATOR] ...</b>
+-        </div>
+-      </div>
++            <div>
++              <label class="muted">Инструкция (additional_instructions)</label>
++              <textarea id="instructions" rows="6" placeholder="Инструкция для ассистента..."></textarea>
++            </div>
++
++            <div class="row">
++              <button id="btnSaveProject">Сохранить</button>
++              <span id="saveOk" class="ok"></span>
++            </div>
++          </div>
++        </section>
++      </main>
+     </div>
+   </div>
  
-     setStatus("Печатает…");
- 
-     // Stream assistant via SSE
-     const url = `${BASE}/api/widget/${projectId}/chat/${chatId}/stream?message=${encodeURIComponent(text)}`;
-     const es = new EventSource(url, { withCredentials: true });
- 
--    let assistantBubble = null;
-+    let assistantText = null;
-     let acc = "";
- 
-     es.addEventListener("token", (e) => {
-       const data = JSON.parse(e.data);
-       const t = data.t || "";
--      if (!assistantBubble) {
--        assistantBubble = append("assistant", "");
-+      if (!assistantText) {
-+        assistantText = append("assistant", "");
-       }
-       acc += t;
--      assistantBubble.querySelector(".aiw-bubble").textContent = acc;
-+      assistantText.textContent = acc;
-       msgs.scrollTop = msgs.scrollHeight;
-     });
- 
-     es.addEventListener("waiting_for_human", () => {
-       setStatus("Оператор подключился. Подождите, пожалуйста…");
-     });
- 
-     es.addEventListener("error", (e) => {
-       try {
-         const data = JSON.parse(e.data);
-         setStatus("Ошибка: " + (data.message || "unknown"));
-       } catch {
-         setStatus("Ошибка");
-       }
-       es.close();
-     });
- 
-     es.addEventListener("done", () => {
-       setStatus("");
-       es.close();
-     });
-   }
- 
-   async function openPanel() {
-     isOpen = true;
+   <script src="/admin/admin.js"></script>
+ </body>
+ </html>

@@ -3,6 +3,7 @@ const $ = (s) => document.querySelector(s);
 let selectedProjectId = null;
 let selectedChatId = null;
 let pollTimer = null;
+let projectsCache = [];
 
 async function api(path, opts={}){
   const r = await fetch(path, { credentials:"include", ...opts });
@@ -21,6 +22,12 @@ function escapeHtml(s){
     .replaceAll("'","&#039;");
 }
 
+function showPage(page){
+  const isSettings = page === "settings";
+  $("#pageChats").style.display = isSettings ? "none" : "block";
+  $("#pageSettings").style.display = isSettings ? "block" : "none";
+}
+
 async function login(){
   $("#loginErr").textContent = "";
   const login = $("#login").value.trim();
@@ -31,7 +38,7 @@ async function login(){
     body: JSON.stringify({ login, password })
   });
   $("#loginBox").style.display = "none";
-  $("#app").style.display = "block";
+  $("#app").style.display = "grid";
   await refreshProjects(true);
 }
 
@@ -43,12 +50,13 @@ async function logout(){
 async function refreshProjects(autoSelectFirst=false){
   const j = await api("/api/admin/projects");
   const items = j.items || [];
+  projectsCache = items;
   const sel = $("#projectSelect");
   sel.innerHTML = "";
   for(const p of items){
     const opt = document.createElement("option");
     opt.value = p.id;
-    opt.textContent = `${p.name} — ${p.id}`;
+    opt.textContent = p.name;
     sel.appendChild(opt);
   }
 
@@ -67,13 +75,13 @@ async function refreshProjects(autoSelectFirst=false){
 }
 
 async function createProject(){
-  const name = $("#newName").value.trim() || "New Project";
+  const name = prompt("Название проекта", "Новый проект")?.trim();
+  if(!name) return;
   const j = await api("/api/admin/projects", {
     method:"POST",
     headers:{ "Content-Type":"application/json" },
     body: JSON.stringify({ name, openai_api_key:"", assistant_id:"", instructions:"", allowed_origins:[] })
   });
-  $("#newName").value = "";
   selectedProjectId = j.project.id;
   await refreshProjects(false);
   $("#projectSelect").value = selectedProjectId;
@@ -86,6 +94,8 @@ async function loadProject(projectId){
   const p = j.project;
   selectedProjectId = p.id;
 
+  const projectName = projectsCache.find(x => x.id === p.id)?.name || "Проект";
+  $("#projectBadge").textContent = projectName;
   $("#projectId").textContent = p.id;
   $("#apiKey").value = p.openai_api_key || "";
   $("#assistantId").value = p.assistant_id || "";
@@ -152,6 +162,7 @@ function renderChats(items){
 
 async function openChat(chatId){
   selectedChatId = chatId;
+  $("#chatPlaceholder").style.display = "none";
   $("#chatBox").style.display = "block";
   $("#chatId").textContent = chatId;
   await refreshChatView();
@@ -217,6 +228,12 @@ async function sendHuman(e){
   await refreshChatView();
 }
 
+function resetChatView(){
+  selectedChatId = null;
+  $("#chatBox").style.display = "none";
+  $("#chatPlaceholder").style.display = "flex";
+}
+
 $("#btnLogin").addEventListener("click", ()=> login().catch(e => $("#loginErr").textContent = "Ошибка входа"));
 $("#btnLogout").addEventListener("click", ()=> logout().catch(()=>{}));
 $("#btnRefreshProjects").addEventListener("click", ()=> refreshProjects(false).catch(()=>{}));
@@ -225,11 +242,14 @@ $("#btnSaveProject").addEventListener("click", ()=> saveProject().catch(()=>{}))
 $("#btnRefreshChats").addEventListener("click", ()=> refreshChats().catch(()=>{}));
 $("#projectSelect").addEventListener("change", async (e)=>{
   selectedProjectId = e.target.value;
-  selectedChatId = null;
-  $("#chatBox").style.display = "none";
+  resetChatView();
   await loadProject(selectedProjectId);
   await refreshChats();
 });
 $("#btnTakeover").addEventListener("click", ()=> takeover().catch(()=>{}));
 $("#btnRelease").addEventListener("click", ()=> release().catch(()=>{}));
 $("#humanForm").addEventListener("submit", sendHuman);
+$("#btnOpenSettings").addEventListener("click", ()=> showPage("settings"));
+$("#btnBackToChats").addEventListener("click", ()=> showPage("chats"));
+
+showPage("chats");
