@@ -33,14 +33,15 @@ export async function updateProject(projectId, patch) {
 
   const name = patch.name ?? p.name;
   const assistantId = patch.assistant_id ?? p.assistant_id;
+  const openaiApiKey = patch.openai_api_key ?? p.openai_api_key;
   const instructions = patch.instructions ?? p.instructions;
   const allowedOrigins = patch.allowed_origins ?? p.allowed_origins;
 
   return await sql.one(
     `UPDATE projects
-     SET name=$2, assistant_id=$3, instructions=$4, allowed_origins=$5, updated_at=NOW()
+     SET name=$2, assistant_id=$3, openai_api_key=$4, instructions=$5, allowed_origins=$6, updated_at=NOW()
      WHERE id=$1 RETURNING *`,
-    [projectId, name, assistantId, instructions, allowedOrigins]
+    [projectId, name, assistantId, openaiApiKey, instructions, allowedOrigins]
   );
 }
 

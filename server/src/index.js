@@ -4,7 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 
-import { pool, sql } from "./lib/db.js";
+import { pool } from "./lib/db.js";
 import { requireAdmin, loginHandler, logoutHandler } from "./lib/auth.js";
 import {
   createProject,
@@ -25,7 +25,8 @@ import { runAssistantStream, syncOperatorToThread } from "./lib/openai.js";
 dotenv.config();
 
 const app = express();
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json({ limit: "2mb" }));
+app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 const __filename = fileURLToPath(import.meta.url);
@@ -49,7 +50,12 @@ app.post("/api/widget/:projectId/chat/start", widgetCors, async (req, res) => {
   if (!project) return res.status(404).json({ error: "project_not_found" });
   if (!project.openai_api_key) return res.status(400).json({ error: "openai_api_key_missing" });
 
-  const chat = await createChat({ projectId, visitorId: visitorId || null, openaiApiKey: project.openai_api_key });
+  const chat = await createChat({
+    projectId,
+    visitorId: visitorId || null,
+    openaiApiKey: project.openai_api_key,
+  });
+
   res.json({ chatId: chat.id, mode: chat.mode });
 });
 
@@ -101,6 +107,11 @@ app.get("/api/widget/:projectId/chat/:chatId/stream", widgetCors, async (req, re
       send("done", { chatId });
       return res.end();
     }
+    if (!project.openai_api_key) {
+      send("error", { message: "openai_api_key is empty for this project" });
+      send("done", { chatId });
+      return res.end();
+    }
 
     send("meta", { chatId, mode: "assistant" });
 
@@ -149,8 +160,18 @@ app.post("/api/admin/projects", requireAdmin, async (req, res) => {
   const assistant_id = String(req.body?.assistant_id || "");
   const openai_api_key = String(req.body?.openai_api_key || "");
   const instructions = String(req.body?.instructions || "");
-  const allowed_origins = Array.isArray(req.body?.allowed_origins) ? req.body.allowed_origins.map(String) : [];
-  const project = await createProject({ name, assistantId: assistant_id, openaiApiKey: openai_api_key, instructions, allowedOrigins: allowed_origins });
+  const allowed_origins = Array.isArray(req.body?.allowed_origins)
+    ? req.body.allowed_origins.map(String)
+    : [];
+
+  const project = await createProject({
+    name,
+    assistantId: assistant_id,
+    openaiApiKey: openai_api_key,
+    instructions,
+    allowedOrigins: allowed_origins,
+  });
+
   res.json({ project });
 });
 
@@ -162,8 +183,13 @@ app.get("/api/admin/projects/:projectId", requireAdmin, async (req, res) => {
 
 app.patch("/api/admin/projects/:projectId", requireAdmin, async (req, res) => {
   const patch = {};
+
   if (typeof req.body?.name === "string") patch.name = req.body.name;
   if (typeof req.body?.assistant_id === "string") patch.assistant_id = req.body.assistant_id;
+
+  // ✅ ВОТ ЭТА СТРОКА РЕШАЕТ ПРОБЛЕМУ: позволяет сохранять API key при PATCH
+  if (typeof req.body?.openai_api_key === "string") patch.openai_api_key = req.body.openai_api_key;
+
   if (typeof req.body?.instructions === "string") patch.instructions = req.body.instructions;
   if (Array.isArray(req.body?.allowed_origins)) patch.allowed_origins = req.body.allowed_origins.map(String);
 
