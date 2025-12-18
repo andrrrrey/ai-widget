@@ -1,12 +1,11 @@
 :root {
-  --aiw-bg: linear-gradient(120deg, #f8f6ff 0%, #f1f5ff 45%, #f8f3ff 100%);
-  --aiw-glow: 0 22px 70px rgba(105, 122, 255, 0.26);
-  --aiw-primary: #6a71ff;
-  --aiw-primary-2: #9a6bff;
-  --aiw-accent: #ff8fb1;
   --aiw-text: #0b1220;
-  --aiw-muted: #64748b;
-  --aiw-panel-radius: 28px;
+  --aiw-muted: #6b7284;
+  --aiw-white: rgba(255, 255, 255, 0.72);
+  --aiw-border: rgba(255, 255, 255, 0.65);
+  --aiw-gradient: radial-gradient(circle at 50% 100%, rgba(255, 165, 205, 0.6), rgba(255, 204, 229, 0) 55%),
+    radial-gradient(circle at 54% 100%, rgba(130, 174, 255, 0.6), rgba(130, 174, 255, 0) 52%),
+    linear-gradient(180deg, #f9f8fb 0%, #f9f8fb 35%, #f9f8fb 100%);
   font-family: 'Inter', 'SF Pro Display', 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
 
@@ -86,10 +85,7 @@
 .aiw-overlay {
   position: fixed;
   inset: 0;
-  background: radial-gradient(circle at 20% 20%, rgba(146, 161, 255, 0.32), transparent 32%),
-    radial-gradient(circle at 80% 10%, rgba(255, 143, 177, 0.35), transparent 34%),
-    linear-gradient(140deg, #f6f7ff 0%, #f2f4ff 50%, #fdf6ff 100%);
-  backdrop-filter: blur(12px);
+  background: var(--aiw-gradient);
   opacity: 0;
   transform: scale(0.98);
   pointer-events: none;
@@ -113,14 +109,14 @@
   width: 44px;
   height: 44px;
   border-radius: 14px;
-  background: rgba(11, 18, 32, 0.08);
+  background: rgba(255, 255, 255, 0.62);
   color: #0b1220;
   cursor: pointer;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
   opacity: 0;
   transform: translateY(-6px);
   transition: opacity 0.3s ease, transform 0.3s ease;
-  backdrop-filter: blur(6px);
+  backdrop-filter: blur(10px);
 }
 
 .aiw-overlay.aiw-show + .aiw-overlay-close,
@@ -149,65 +145,70 @@
   animation: aiw-panel-rise 0.6s ease;
 }
 
-.aiw-card {
-  width: min(1040px, calc(100vw - 48px));
-  height: min(80vh, 640px);
-  background: var(--aiw-bg);
-  border-radius: var(--aiw-panel-radius);
-  box-shadow: var(--aiw-glow);
-  border: 1px solid rgba(106, 113, 255, 0.12);
+.aiw-shell {
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-}
-
-.aiw-header {
-  display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 22px;
-  border-bottom: 1px solid rgba(106, 113, 255, 0.15);
-  background: linear-gradient(120deg, rgba(111, 133, 255, 0.15), rgba(255, 143, 177, 0.08));
-  backdrop-filter: blur(6px);
+  padding: 64px 22px 42px;
+  box-sizing: border-box;
 }
 
-.aiw-title {
-  font-size: 18px;
-  font-weight: 800;
+.aiw-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+  animation: aiw-content-fade 0.55s ease both;
+}
+
+.aiw-mark {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.52);
+  border-radius: 18px;
+  border: 1px solid var(--aiw-border);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(12px);
+}
+
+.aiw-heading {
+  font-size: 26px;
+  font-weight: 700;
   color: var(--aiw-text);
-}
-
-.aiw-close {
-  border: 0;
-  background: rgba(11, 18, 32, 0.06);
-  color: var(--aiw-text);
-  cursor: pointer;
-  font-size: 18px;
-  border-radius: 14px;
-  padding: 8px 10px;
-  transition: background 0.2s ease, transform 0.2s ease;
-}
-
-.aiw-close:hover {
-  background: rgba(11, 18, 32, 0.1);
-  transform: rotate(3deg);
 }
 
 .aiw-body {
+  width: 100%;
   display: flex;
   flex-direction: column;
-  height: calc(100% - 64px);
+  align-items: center;
+  gap: 12px;
   font-size: 16px;
 }
 
-.aiw-messages {
-  flex: 1;
-  overflow: auto;
-  padding: 26px 26px 12px 26px;
+.aiw-chat {
+  width: min(960px, calc(100vw - 48px));
   display: flex;
   flex-direction: column;
   gap: 16px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.92));
+}
+
+.aiw-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 20px 16px;
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.48));
+  border-radius: 26px;
+  border: 1px solid var(--aiw-border);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(16px);
   animation: aiw-content-fade 0.55s ease 0.1s both;
 }
 
@@ -224,7 +225,7 @@
 }
 
 .aiw-bubble {
-  max-width: 70ch;
+  max-width: 72ch;
   padding: 12px 14px;
   border-radius: 18px;
   white-space: pre-wrap;
@@ -235,20 +236,21 @@
 }
 
 .aiw-user .aiw-bubble {
-  background: linear-gradient(140deg, #d58cff, #9f8bff 50%, #7db0ff);
+  background: linear-gradient(135deg, rgba(140, 189, 255, 0.78), rgba(158, 132, 255, 0.82));
   color: #f9fbff;
   border-bottom-right-radius: 10px;
 }
 
 .aiw-assistant .aiw-bubble {
-  background: linear-gradient(120deg, rgba(154, 107, 255, 0.12), rgba(125, 176, 255, 0.18));
-  color: var(--aiw-text);
-  border: 1px solid rgba(106, 113, 255, 0.12);
+  background: linear-gradient(135deg, rgba(255, 184, 214, 0.7), rgba(167, 191, 255, 0.7));
+  color: #0c0f1a;
+  border: 1px solid rgba(255, 255, 255, 0.6);
   border-bottom-left-radius: 10px;
 }
 
+
 .aiw-status {
-  padding: 0 26px 10px 26px;
+  padding: 0 4px;
   color: var(--aiw-muted);
   font-size: 13px;
   min-height: 20px;
@@ -258,50 +260,60 @@
 
 .aiw-form {
   display: flex;
+  align-items: center;
   gap: 12px;
-  padding: 16px 20px 18px 20px;
-  border-top: 1px solid rgba(106, 113, 255, 0.12);
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
+  padding: 12px 14px 12px 18px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(14px);
   animation: aiw-content-fade 0.55s ease 0.2s both;
 }
 
 .aiw-input {
   flex: 1;
-  border-radius: 16px;
-  border: 1px solid rgba(106, 113, 255, 0.2);
-  background: #fff;
+  border-radius: 14px;
+  border: 1px solid rgba(12, 15, 26, 0.04);
+  background: rgba(255, 255, 255, 0.6);
   color: var(--aiw-text);
-  padding: 14px 14px;
-  font-size: 16px;
+  padding: 14px 16px;
+  font-size: 15px;
   outline: none;
-  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.08);
+  box-shadow: inset 0 1px 1px rgba(15, 23, 42, 0.08);
 }
 
 .aiw-input::placeholder {
-  color: #9aa5c4;
+  color: #9ba3b5;
 }
 
 .aiw-input:focus {
-  border-color: var(--aiw-primary);
-  box-shadow: 0 0 0 3px rgba(106, 113, 255, 0.18);
+  border-color: rgba(121, 132, 255, 0.6);
+  box-shadow: 0 0 0 3px rgba(121, 132, 255, 0.18);
 }
 
 .aiw-send {
-  border-radius: 16px;
+  border-radius: 14px;
   border: 0;
-  background: linear-gradient(135deg, #6a71ff, #ff8fb1);
+  background: linear-gradient(135deg, #93a2ff, #dca1ff);
   color: #fff;
-  padding: 0 18px;
-  font-weight: 800;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
   cursor: pointer;
-  box-shadow: 0 14px 30px rgba(106, 113, 255, 0.35);
+  box-shadow: 0 14px 30px rgba(106, 113, 255, 0.28);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.aiw-send svg {
+  width: 18px;
+  height: 18px;
 }
 
 .aiw-send:hover {
   transform: translateY(-1px);
-  box-shadow: 0 18px 36px rgba(106, 113, 255, 0.42);
+  box-shadow: 0 18px 36px rgba(106, 113, 255, 0.38);
 }
 
 .aiw-send:active {
@@ -309,12 +321,12 @@
 }
 
 .aiw-panel .aiw-body,
-.aiw-panel .aiw-header {
+.aiw-panel .aiw-hero {
   opacity: 0;
   transition: opacity 0.35s ease 0.2s;
 }
 
 .aiw-panel.aiw-open .aiw-body,
-.aiw-panel.aiw-open .aiw-header {
+.aiw-panel.aiw-open .aiw-hero {
   opacity: 1;
 }
