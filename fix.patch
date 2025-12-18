@@ -1,0 +1,63 @@
+diff --git a/widget/widget.css b/widget/widget.css
+index f9ef9404051b105f8c4a5c56f017c4fc1121f4d4..e28e8904ea33c012c9380d597b763a5cb8b9662d 100644
+--- a/widget/widget.css
++++ b/widget/widget.css
+@@ -1,30 +1,37 @@
+-.aiw-fab{position:fixed;bottom:24px;z-index:99999;width:56px;height:56px;border-radius:999px;border:0;cursor:pointer;
+-  box-shadow:0 10px 30px rgba(0,0,0,.25);font-size:22px;line-height:56px;text-align:center;background:#111827;color:#fff}
++.aiw-fab{position:fixed;bottom:24px;z-index:99999;width:64px;height:64px;border-radius:50%;border:0;cursor:pointer;
++  box-shadow:0 12px 35px rgba(59,130,246,.35);font-size:24px;line-height:64px;text-align:center;
++  background:linear-gradient(135deg,#5b8dff,#8f6fff 45%,#ff7ac3);color:#fff;transition:transform .25s ease,box-shadow .25s ease,filter .25s ease}
++.aiw-fab:hover{transform:translateY(-2px) scale(1.02);box-shadow:0 16px 40px rgba(59,130,246,.4);filter:saturate(1.05)}
++.aiw-fab:active{transform:translateY(0) scale(.98)}
+ .aiw-fab.aiw-right{right:24px}
+ .aiw-fab.aiw-left{left:24px}
+ 
+-.aiw-panel{position:fixed;bottom:92px;z-index:99999;width:360px;max-width:calc(100vw - 32px);height:520px;
+-  background:#0b1220;color:#e8eefc;border-radius:14px;box-shadow:0 16px 50px rgba(0,0,0,.35);
+-  overflow:hidden;display:none;border:1px solid rgba(255,255,255,.08)}
+-.aiw-panel.aiw-right{right:24px}
+-.aiw-panel.aiw-left{left:24px}
+-.aiw-panel.aiw-open{display:block}
++.aiw-panel{position:fixed;inset:16px;z-index:99998;width:calc(100vw - 32px);height:calc(100vh - 32px);
++  background:linear-gradient(160deg,#f7f9ff,#eef3ff 45%,#e7e9ff);color:#0f172a;border-radius:22px;box-shadow:0 20px 60px rgba(59,130,246,.25);
++  overflow:hidden;opacity:0;transform:scale(.2);transform-origin:right bottom;transition:transform .55s cubic-bezier(.22,1,.36,1),opacity .3s ease;
++  border:1px solid rgba(59,130,246,.15);pointer-events:none;backdrop-filter:blur(8px)}
++.aiw-panel.aiw-right{transform-origin:right bottom}
++.aiw-panel.aiw-left{transform-origin:left bottom}
++.aiw-panel.aiw-open{opacity:1;transform:scale(1);pointer-events:auto}
+ 
+-.aiw-header{display:flex;align-items:center;justify-content:space-between;padding:12px 12px;border-bottom:1px solid rgba(255,255,255,.08);
+-  background:rgba(255,255,255,.03)}
+-.aiw-title{font-size:14px;font-weight:700}
+-.aiw-close{border:0;background:transparent;color:#e8eefc;cursor:pointer;font-size:16px}
++.aiw-header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid rgba(59,130,246,.12);
++  background:linear-gradient(120deg,rgba(91,141,255,.15),rgba(255,122,195,.08));backdrop-filter:blur(6px)}
++.aiw-title{font-size:18px;font-weight:800;font-family:'Inter','SF Pro Display','Segoe UI',sans-serif;color:#0b1220}
++.aiw-close{border:0;background:rgba(15,23,42,.05);color:#0b1220;cursor:pointer;font-size:18px;border-radius:12px;padding:8px;transition:background .2s ease,transform .2s ease}
++.aiw-close:hover{background:rgba(15,23,42,.08);transform:rotate(4deg)}
+ 
+-.aiw-body{display:flex;flex-direction:column;height:calc(100% - 48px)}
+-.aiw-messages{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
++.aiw-body{display:flex;flex-direction:column;height:calc(100% - 64px);font-family:'Inter','SF Pro Display','Segoe UI',sans-serif;font-size:16px}
++.aiw-messages{flex:1;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:12px;background:linear-gradient(180deg,rgba(255,255,255,.65),rgba(255,255,255,.85));}
+ .aiw-msg{display:flex}
+ .aiw-user{justify-content:flex-end}
+ .aiw-assistant{justify-content:flex-start}
+-.aiw-bubble{max-width:85%;padding:10px 12px;border-radius:14px;white-space:pre-wrap;word-break:break-word;font-size:14px;line-height:1.35}
+-.aiw-user .aiw-bubble{background:#2563eb;color:white;border-bottom-right-radius:6px}
+-.aiw-assistant .aiw-bubble{background:#111827;color:#e8eefc;border:1px solid rgba(255,255,255,.08);border-bottom-left-radius:6px}
++.aiw-bubble{max-width:85%;padding:12px 14px;border-radius:18px;white-space:pre-wrap;word-break:break-word;font-size:16px;line-height:1.45;box-shadow:0 10px 25px rgba(15,23,42,.08)}
++.aiw-user .aiw-bubble{background:linear-gradient(140deg,#5b8dff,#7aa2ff 45%,#8f6fff);color:#f8fbff;border-bottom-right-radius:8px}
++.aiw-assistant .aiw-bubble{background:#ffffff;color:#0f172a;border:1px solid rgba(59,130,246,.14);border-bottom-left-radius:8px}
+ 
+-.aiw-status{padding:0 12px 8px 12px;color:#9fb3d9;font-size:12px;min-height:18px}
+-.aiw-form{display:flex;gap:8px;padding:10px 12px;border-top:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02)}
+-.aiw-input{flex:1;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0b1220;color:#e8eefc;padding:10px 10px;font-size:14px;outline:none}
+-.aiw-send{border-radius:10px;border:0;background:#F58220;color:#111827;padding:10px 12px;font-weight:700;cursor:pointer}
++.aiw-status{padding:0 18px 10px 18px;color:#54617c;font-size:13px;min-height:20px;font-weight:600}
++.aiw-form{display:flex;gap:10px;padding:14px 18px;border-top:1px solid rgba(59,130,246,.12);background:rgba(255,255,255,.9);backdrop-filter:blur(8px)}
++.aiw-input{flex:1;border-radius:12px;border:1px solid rgba(59,130,246,.18);background:#fff;color:#0f172a;padding:12px 12px;font-size:16px;outline:none;box-shadow:inset 0 1px 2px rgba(15,23,42,.08)}
++.aiw-input:focus{border-color:#5b8dff;box-shadow:0 0 0 3px rgba(91,141,255,.18)}
++.aiw-send{border-radius:12px;border:0;background:linear-gradient(135deg,#5b8dff,#8f6fff 60%,#ff7ac3);color:#fff;padding:12px 14px;font-weight:800;cursor:pointer;box-shadow:0 12px 25px rgba(91,141,255,.35);transition:transform .2s ease,box-shadow .2s ease}
++.aiw-send:hover{transform:translateY(-1px);box-shadow:0 16px 32px rgba(91,141,255,.4)}
