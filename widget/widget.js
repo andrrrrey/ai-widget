@@ -45,25 +45,23 @@
   panel.innerHTML = `
     <div class="aiw-shell">
       <div class="aiw-hero">
-        <div class="aiw-mark" aria-hidden="true">
-          <svg width="26" height="26" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M13 0.75C13.4142 0.75 13.75 1.08579 13.75 1.5V4.25C13.75 4.66421 13.4142 5 13 5C12.5858 5 12.25 4.66421 12.25 4.25V1.5C12.25 1.08579 12.5858 0.75 13 0.75Z" fill="#0B1220"/>
-            <path d="M13 21C13.4142 21 13.75 21.3358 13.75 21.75V24.5C13.75 24.9142 13.4142 25.25 13 25.25C12.5858 25.25 12.25 24.9142 12.25 24.5V21.75C12.25 21.3358 12.5858 21 13 21Z" fill="#0B1220"/>
-            <path d="M21 13C21 13.4142 21.3358 13.75 21.75 13.75H24.5C24.9142 13.75 25.25 13.4142 25.25 13C25.25 12.5858 24.9142 12.25 24.5 12.25H21.75C21.3358 12.25 21 12.5858 21 13Z" fill="#0B1220"/>
-            <path d="M0.75 13C0.75 13.4142 1.08579 13.75 1.5 13.75H4.25C4.66421 13.75 5 13.4142 5 13C5 12.5858 4.66421 12.25 4.25 12.25H1.5C1.08579 12.25 0.75 12.5858 0.75 13Z" fill="#0B1220"/>
-            <circle cx="13" cy="13" r="3.25" stroke="#0B1220" stroke-width="1.5"/>
-          </svg>
-        </div>
-        <div class="aiw-heading">Ask our AI anything</div>
+        <svg class="aiw-sparkle" viewBox="0 0 64 64" fill="currentColor" aria-hidden="true">
+          <path d="M33.6 10.2c.4-1.5 2.5-1.5 2.9 0l1.5 5.3c.1.4.4.7.8.8l5.3 1.5c1.5.4 1.5 2.5 0 2.9l-5.3 1.5c-.4.1-.7.4-.8.8l-1.5 5.3c-.4 1.5-2.5 1.5-2.9 0l-1.5-5.3c-.1-.4-.4-.7-.8-.8L26 20.7c-1.5-.4-1.5-2.5 0-2.9l5.3-1.5c.4-.1.7-.4.8-.8l1.5-5.3z"/>
+          <path d="M18.4 28.8c.3-1.1 1.9-1.1 2.2 0l1 3.6c.1.3.3.5.6.6l3.6 1c1.1.3 1.1 1.9 0 2.2l-3.6 1c-.3.1-.5.3-.6.6l-1 3.6c-.3 1.1-1.9 1.1-2.2 0l-1-3.6c-.1-.3-.3-.5-.6-.6l-3.6-1c-1.1-.3-1.1-1.9 0-2.2l3.6-1c.3-.1.5-.3.6-.6l1-3.6z"/>
+        </svg>
+        <div class="aiw-title">Ask our AI anything</div>
       </div>
-      <div class="aiw-body">
-        <div class="aiw-messages" id="aiw-msgs"></div>
-        <div class="aiw-status" id="aiw-status"></div>
-        <form class="aiw-form" id="aiw-form">
+
+      <div class="aiw-chat" aria-label="Chat messages" id="aiw-msgs"></div>
+      <div class="aiw-status" id="aiw-status"></div>
+
+      <div class="aiw-composerWrap">
+        <form class="aiw-composer" id="aiw-form" role="group" aria-label="Message composer">
           <input class="aiw-input" id="aiw-input" placeholder="Ask me anything about your projects" autocomplete="off"/>
           <button class="aiw-send" type="submit" aria-label="Send">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M3.5 12L20.5 3.5L16 20.5L12.5 13.5L3.5 12Z" stroke="white" stroke-width="1.6" stroke-linejoin="round"/>
+            <svg viewBox="0 0 24 24" fill="none" stroke="rgba(130,140,155,.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M22 2L11 13" />
+              <path d="M22 2L15 22l-4-9-9-4 20-7z" />
             </svg>
           </button>
         </form>
@@ -87,11 +85,25 @@
 
   function append(role, text) {
     const item = document.createElement("div");
-    item.className = "aiw-msg aiw-" + role;
-    item.innerHTML = `<div class="aiw-bubble">${escapeHtml(text)}</div>`;
+    const isUser = role === "user";
+    item.className = "aiw-msg " + (isUser ? "aiw-right" : "aiw-left");
+
+    const label = document.createElement("div");
+    label.className = "aiw-label";
+    label.textContent = isUser ? "ME" : "OUR AI";
+
+    const bubble = document.createElement("div");
+    bubble.className = "aiw-bubble";
+    const p = document.createElement("p");
+    p.textContent = text;
+    bubble.appendChild(p);
+
+    item.appendChild(label);
+    item.appendChild(bubble);
+
     msgs.appendChild(item);
     msgs.scrollTop = msgs.scrollHeight;
-    return item;
+    return p;
   }
 
   async function ensureChat() {
@@ -120,17 +132,17 @@
     const url = `${BASE}/api/widget/${projectId}/chat/${chatId}/stream?message=${encodeURIComponent(text)}`;
     const es = new EventSource(url, { withCredentials: true });
 
-    let assistantBubble = null;
+    let assistantText = null;
     let acc = "";
 
     es.addEventListener("token", (e) => {
       const data = JSON.parse(e.data);
       const t = data.t || "";
-      if (!assistantBubble) {
-        assistantBubble = append("assistant", "");
+      if (!assistantText) {
+        assistantText = append("assistant", "");
       }
       acc += t;
-      assistantBubble.querySelector(".aiw-bubble").textContent = acc;
+      assistantText.textContent = acc;
       msgs.scrollTop = msgs.scrollHeight;
     });
 

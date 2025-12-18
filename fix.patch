@@ -1,26 +1,30 @@
 diff --git a/widget/widget.css b/widget/widget.css
-index e5e423c71d4395a61bf55f4780549c39d12459f7..4405af57b59c7bf37d2094250e1fb54cc61a0559 100644
+index 4405af57b59c7bf37d2094250e1fb54cc61a0559..c15b696f932cfb9fc9a24036e928b51b988962a2 100644
 --- a/widget/widget.css
 +++ b/widget/widget.css
-@@ -1,34 +1,33 @@
- :root {
--  --aiw-bg: linear-gradient(120deg, #f8f6ff 0%, #f1f5ff 45%, #f8f3ff 100%);
--  --aiw-glow: 0 22px 70px rgba(105, 122, 255, 0.26);
--  --aiw-primary: #6a71ff;
--  --aiw-primary-2: #9a6bff;
--  --aiw-accent: #ff8fb1;
-   --aiw-text: #0b1220;
--  --aiw-muted: #64748b;
--  --aiw-panel-radius: 28px;
-+  --aiw-muted: #6b7284;
-+  --aiw-white: rgba(255, 255, 255, 0.72);
-+  --aiw-border: rgba(255, 255, 255, 0.65);
-+  --aiw-gradient: radial-gradient(circle at 50% 100%, rgba(255, 165, 205, 0.6), rgba(255, 204, 229, 0) 55%),
-+    radial-gradient(circle at 54% 100%, rgba(130, 174, 255, 0.6), rgba(130, 174, 255, 0) 52%),
-+    linear-gradient(180deg, #f9f8fb 0%, #f9f8fb 35%, #f9f8fb 100%);
-   font-family: 'Inter', 'SF Pro Display', 'Segoe UI', system-ui, -apple-system, sans-serif;
+@@ -1,332 +1,211 @@
+-:root {
+-  --aiw-text: #0b1220;
+-  --aiw-muted: #6b7284;
+-  --aiw-white: rgba(255, 255, 255, 0.72);
+-  --aiw-border: rgba(255, 255, 255, 0.65);
+-  --aiw-gradient: radial-gradient(circle at 50% 100%, rgba(255, 165, 205, 0.6), rgba(255, 204, 229, 0) 55%),
+-    radial-gradient(circle at 54% 100%, rgba(130, 174, 255, 0.6), rgba(130, 174, 255, 0) 52%),
+-    linear-gradient(180deg, #f9f8fb 0%, #f9f8fb 35%, #f9f8fb 100%);
+-  font-family: 'Inter', 'SF Pro Display', 'Segoe UI', system-ui, -apple-system, sans-serif;
++:root{
++  --aiw-text:#111214;
++  --aiw-muted:rgba(0,0,0,.55);
++
++  --aiw-bubble-bg: rgba(255,255,255,.72);
++  --aiw-bubble-border: rgba(0,0,0,.08);
++
++  --aiw-input-bg: rgba(255,255,255,.78);
++  --aiw-input-border: rgba(0,0,0,.10);
  }
  
++*{box-sizing:border-box}
++
  .aiw-fab {
    position: fixed;
    bottom: 24px;
@@ -30,7 +34,8 @@ index e5e423c71d4395a61bf55f4780549c39d12459f7..4405af57b59c7bf37d2094250e1fb54c
    border-radius: 50%;
    border: 0;
    cursor: pointer;
-   box-shadow: 0 14px 40px rgba(106, 113, 255, 0.38);
+-  box-shadow: 0 14px 40px rgba(106, 113, 255, 0.38);
++  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.18);
    font-size: 24px;
    line-height: 64px;
    text-align: center;
@@ -40,53 +45,89 @@ index e5e423c71d4395a61bf55f4780549c39d12459f7..4405af57b59c7bf37d2094250e1fb54c
    overflow: hidden;
  }
  
- .aiw-fab:hover {
-   transform: translateY(-2px) scale(1.05);
-   box-shadow: 0 18px 48px rgba(106, 113, 255, 0.45);
-@@ -64,257 +63,270 @@
- }
- 
- @keyframes aiw-panel-rise {
-   0% {
-     transform: translateY(40px) scale(0.96);
-     opacity: 0;
-   }
-   60% {
-     transform: translateY(0) scale(1.02);
-     opacity: 1;
-   }
-   100% {
-     transform: translateY(0) scale(1);
-     opacity: 1;
-   }
- }
- 
- @keyframes aiw-content-fade {
-   from { opacity: 0; transform: translateY(10px); }
-   to { opacity: 1; transform: translateY(0); }
- }
+-.aiw-fab:hover {
+-  transform: translateY(-2px) scale(1.05);
+-  box-shadow: 0 18px 48px rgba(106, 113, 255, 0.45);
+-}
+-
+-.aiw-fab:active {
+-  transform: translateY(0) scale(0.97);
+-}
+-
+-.aiw-fab.aiw-right {
+-  right: 24px;
+-}
+-
+-.aiw-fab.aiw-left {
+-  left: 24px;
+-}
+-
+-.aiw-fab.aiw-hide {
+-  opacity: 0;
+-  transform: scale(0.75);
+-  pointer-events: none;
+-}
+-
+-@keyframes aiw-overlay-expand {
+-  from {
+-    transform: scale(0.85);
+-    opacity: 0;
+-  }
+-  to {
+-    transform: scale(1);
+-    opacity: 1;
+-  }
+-}
+-
+-@keyframes aiw-panel-rise {
+-  0% {
+-    transform: translateY(40px) scale(0.96);
+-    opacity: 0;
+-  }
+-  60% {
+-    transform: translateY(0) scale(1.02);
+-    opacity: 1;
+-  }
+-  100% {
+-    transform: translateY(0) scale(1);
+-    opacity: 1;
+-  }
+-}
+-
+-@keyframes aiw-content-fade {
+-  from { opacity: 0; transform: translateY(10px); }
+-  to { opacity: 1; transform: translateY(0); }
+-}
++.aiw-fab:hover { transform: translateY(-2px) scale(1.05); box-shadow: 0 18px 48px rgba(0, 0, 0, 0.25); }
++.aiw-fab:active { transform: translateY(0) scale(0.97); }
++.aiw-fab.aiw-right { right: 24px; }
++.aiw-fab.aiw-left { left: 24px; }
++.aiw-fab.aiw-hide { opacity: 0; transform: scale(0.75); pointer-events: none; }
  
  .aiw-overlay {
    position: fixed;
    inset: 0;
--  background: radial-gradient(circle at 20% 20%, rgba(146, 161, 255, 0.32), transparent 32%),
--    radial-gradient(circle at 80% 10%, rgba(255, 143, 177, 0.35), transparent 34%),
--    linear-gradient(140deg, #f6f7ff 0%, #f2f4ff 50%, #fdf6ff 100%);
--  backdrop-filter: blur(12px);
-+  background: var(--aiw-gradient);
+-  background: var(--aiw-gradient);
++  background:
++    radial-gradient(980px 600px at 28% 100%, rgba(247,213,246,.95) 0%, rgba(247,213,246,0) 58%),
++    radial-gradient(980px 600px at 55% 100%, rgba(235,229,251,.95) 0%, rgba(235,229,251,0) 62%),
++    radial-gradient(980px 600px at 20% 92%, rgba(255,233,249,.95) 0%, rgba(255,233,249,0) 58%),
++    #ffffff;
    opacity: 0;
    transform: scale(0.98);
    pointer-events: none;
    transition: opacity 0.6s ease, transform 0.6s ease;
    z-index: 99997;
++  overflow: hidden;
  }
  
- .aiw-overlay.aiw-show {
-   opacity: 1;
-   transform: scale(1);
-   pointer-events: auto;
-   animation: aiw-overlay-expand 0.75s ease;
- }
+-.aiw-overlay.aiw-show {
+-  opacity: 1;
+-  transform: scale(1);
+-  pointer-events: auto;
+-  animation: aiw-overlay-expand 0.75s ease;
+-}
++.aiw-overlay.aiw-show { opacity: 1; transform: scale(1); pointer-events: auto; }
  
  .aiw-overlay-close {
    position: fixed;
@@ -97,299 +138,327 @@ index e5e423c71d4395a61bf55f4780549c39d12459f7..4405af57b59c7bf37d2094250e1fb54c
    width: 44px;
    height: 44px;
    border-radius: 14px;
--  background: rgba(11, 18, 32, 0.08);
-+  background: rgba(255, 255, 255, 0.62);
+   background: rgba(255, 255, 255, 0.62);
    color: #0b1220;
    cursor: pointer;
    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
    opacity: 0;
    transform: translateY(-6px);
    transition: opacity 0.3s ease, transform 0.3s ease;
--  backdrop-filter: blur(6px);
-+  backdrop-filter: blur(10px);
+   backdrop-filter: blur(10px);
  }
  
  .aiw-overlay.aiw-show + .aiw-overlay-close,
- .aiw-overlay-close.aiw-visible {
-   opacity: 1;
-   transform: translateY(0);
- }
+-.aiw-overlay-close.aiw-visible {
+-  opacity: 1;
+-  transform: translateY(0);
+-}
++.aiw-overlay-close.aiw-visible { opacity: 1; transform: translateY(0); }
  
  .aiw-panel {
    position: fixed;
    inset: 0;
    display: flex;
-   align-items: center;
-   justify-content: center;
+-  align-items: center;
+-  justify-content: center;
++  align-items: stretch;
++  justify-content: stretch;
    z-index: 99998;
    pointer-events: none;
    opacity: 0;
-   transform: translateY(20px) scale(0.97);
+-  transform: translateY(20px) scale(0.97);
++  transform: translateY(12px) scale(0.98);
    transition: opacity 0.35s ease, transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
  }
  
- .aiw-panel.aiw-open {
-   opacity: 1;
-   transform: translateY(0) scale(1);
-   pointer-events: auto;
-   animation: aiw-panel-rise 0.6s ease;
- }
+-.aiw-panel.aiw-open {
+-  opacity: 1;
+-  transform: translateY(0) scale(1);
+-  pointer-events: auto;
+-  animation: aiw-panel-rise 0.6s ease;
+-}
++.aiw-panel.aiw-open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
  
--.aiw-card {
--  width: min(1040px, calc(100vw - 48px));
--  height: min(80vh, 640px);
--  background: var(--aiw-bg);
--  border-radius: var(--aiw-panel-radius);
--  box-shadow: var(--aiw-glow);
--  border: 1px solid rgba(106, 113, 255, 0.12);
-+.aiw-shell {
-+  width: 100%;
-+  height: 100%;
-   display: flex;
-   flex-direction: column;
--  overflow: hidden;
-+  align-items: center;
-+  justify-content: space-between;
-+  padding: 64px 22px 42px;
-+  box-sizing: border-box;
- }
- 
--.aiw-header {
-+.aiw-hero {
-   display: flex;
-+  flex-direction: column;
-   align-items: center;
+-.aiw-shell {
+-  width: 100%;
+-  height: 100%;
+-  display: flex;
+-  flex-direction: column;
+-  align-items: center;
 -  justify-content: space-between;
--  padding: 18px 22px;
--  border-bottom: 1px solid rgba(106, 113, 255, 0.15);
--  background: linear-gradient(120deg, rgba(111, 133, 255, 0.15), rgba(255, 143, 177, 0.08));
--  backdrop-filter: blur(6px);
-+  gap: 12px;
-+  margin-top: 6px;
-+  animation: aiw-content-fade 0.55s ease both;
+-  padding: 64px 22px 42px;
+-  box-sizing: border-box;
++.aiw-shell{
++  width:100%;
++  height:100%;
++  display:flex;
++  flex-direction:column;
++  padding: 56px 64px 28px;
++  gap: 22px;
++  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Inter", "Helvetica Neue", sans-serif;
++  color:var(--aiw-text);
  }
  
--.aiw-title {
--  font-size: 18px;
--  font-weight: 800;
+-.aiw-hero {
+-  display: flex;
+-  flex-direction: column;
+-  align-items: center;
+-  gap: 12px;
+-  margin-top: 6px;
+-  animation: aiw-content-fade 0.55s ease both;
++.aiw-hero{
++  display:flex;
++  flex-direction:column;
++  align-items:center;
++  justify-content:flex-start;
++  gap: 14px;
++  padding-top: 48px;
++  flex: 0 0 auto;
++  pointer-events:none;
+ }
+ 
+-.aiw-mark {
+-  width: 58px;
+-  height: 58px;
+-  display: grid;
+-  place-items: center;
+-  background: rgba(255, 255, 255, 0.52);
+-  border-radius: 18px;
+-  border: 1px solid var(--aiw-border);
+-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.06);
+-  backdrop-filter: blur(12px);
+-}
++.aiw-sparkle{ width:40px;height:40px;color:#0f0f10;opacity:.95; }
++.aiw-title{ font-size: clamp(22px, 2.2vw, 34px); font-weight: 500; letter-spacing:.2px; }
+ 
+-.aiw-heading {
+-  font-size: 26px;
+-  font-weight: 700;
 -  color: var(--aiw-text);
-+.aiw-mark {
-+  width: 58px;
-+  height: 58px;
-+  display: grid;
-+  place-items: center;
-+  background: rgba(255, 255, 255, 0.52);
-+  border-radius: 18px;
-+  border: 1px solid var(--aiw-border);
-+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.06);
-+  backdrop-filter: blur(12px);
++.aiw-chat{
++  flex: 1 1 auto;
++  min-height: 0;
++  display:flex;
++  flex-direction:column;
++  justify-content:flex-end;
++  gap: 18px;
++  padding: 10px 0 6px;
++  overflow:auto;
++  scrollbar-width: none;
  }
  
--.aiw-close {
--  border: 0;
--  background: rgba(11, 18, 32, 0.06);
-+.aiw-heading {
-+  font-size: 26px;
-+  font-weight: 700;
-   color: var(--aiw-text);
--  cursor: pointer;
--  font-size: 18px;
--  border-radius: 14px;
--  padding: 8px 10px;
--  transition: background 0.2s ease, transform 0.2s ease;
+-.aiw-body {
+-  width: 100%;
+-  display: flex;
+-  flex-direction: column;
+-  align-items: center;
+-  gap: 12px;
+-  font-size: 16px;
+-}
++.aiw-chat::-webkit-scrollbar{width:0;height:0}
+ 
+-.aiw-chat {
+-  width: min(960px, calc(100vw - 48px));
+-  display: flex;
+-  flex-direction: column;
+-  gap: 16px;
+-}
++.aiw-msg{ display:flex; flex-direction:column; gap: 8px; max-width: 860px; }
++.aiw-msg.aiw-left{ align-self:flex-start; }
++.aiw-msg.aiw-right{ align-self:flex-end; }
+ 
+-.aiw-messages {
+-  display: flex;
+-  flex-direction: column;
+-  gap: 16px;
+-  padding: 20px 20px 16px;
+-  background: linear-gradient(140deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.48));
+-  border-radius: 26px;
+-  border: 1px solid var(--aiw-border);
+-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.08);
+-  backdrop-filter: blur(16px);
+-  animation: aiw-content-fade 0.55s ease 0.1s both;
+-}
++.aiw-label{ font-size: 12px; letter-spacing: .08em; color: var(--aiw-muted); padding: 0 10px; }
+ 
+-.aiw-msg {
+-  display: flex;
 -}
 -
--.aiw-close:hover {
--  background: rgba(11, 18, 32, 0.1);
--  transform: rotate(3deg);
- }
- 
- .aiw-body {
-+  width: 100%;
-   display: flex;
-   flex-direction: column;
--  height: calc(100% - 64px);
-+  align-items: center;
-+  gap: 12px;
-   font-size: 16px;
- }
- 
-+.aiw-chat {
-+  width: min(960px, calc(100vw - 48px));
-+  display: flex;
-+  flex-direction: column;
-+  gap: 16px;
-+}
-+
- .aiw-messages {
--  flex: 1;
--  overflow: auto;
--  padding: 26px 26px 12px 26px;
-   display: flex;
-   flex-direction: column;
-   gap: 16px;
--  background: linear-gradient(180deg, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.92));
-+  padding: 20px 20px 16px;
-+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.48));
-+  border-radius: 26px;
-+  border: 1px solid var(--aiw-border);
-+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.08);
-+  backdrop-filter: blur(16px);
-   animation: aiw-content-fade 0.55s ease 0.1s both;
- }
- 
- .aiw-msg {
-   display: flex;
- }
- 
- .aiw-user {
-   justify-content: flex-end;
- }
- 
- .aiw-assistant {
-   justify-content: flex-start;
- }
- 
- .aiw-bubble {
--  max-width: 70ch;
-+  max-width: 72ch;
-   padding: 12px 14px;
-   border-radius: 18px;
-   white-space: pre-wrap;
-   word-break: break-word;
-   font-size: 16px;
-   line-height: 1.5;
-   box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
- }
- 
- .aiw-user .aiw-bubble {
--  background: linear-gradient(140deg, #d58cff, #9f8bff 50%, #7db0ff);
-+  background: linear-gradient(135deg, rgba(140, 189, 255, 0.78), rgba(158, 132, 255, 0.82));
-   color: #f9fbff;
-   border-bottom-right-radius: 10px;
- }
- 
- .aiw-assistant .aiw-bubble {
--  background: linear-gradient(120deg, rgba(154, 107, 255, 0.12), rgba(125, 176, 255, 0.18));
--  color: var(--aiw-text);
--  border: 1px solid rgba(106, 113, 255, 0.12);
-+  background: linear-gradient(135deg, rgba(255, 184, 214, 0.7), rgba(167, 191, 255, 0.7));
-+  color: #0c0f1a;
-+  border: 1px solid rgba(255, 255, 255, 0.6);
-   border-bottom-left-radius: 10px;
- }
- 
-+
- .aiw-status {
--  padding: 0 26px 10px 26px;
-+  padding: 0 4px;
-   color: var(--aiw-muted);
-   font-size: 13px;
-   min-height: 20px;
-   font-weight: 600;
-   animation: aiw-content-fade 0.45s ease 0.18s both;
- }
- 
- .aiw-form {
-   display: flex;
-+  align-items: center;
-   gap: 12px;
--  padding: 16px 20px 18px 20px;
--  border-top: 1px solid rgba(106, 113, 255, 0.12);
--  background: rgba(255, 255, 255, 0.95);
--  backdrop-filter: blur(10px);
-+  padding: 12px 14px 12px 18px;
-+  border-radius: 20px;
-+  background: rgba(255, 255, 255, 0.82);
-+  border: 1px solid rgba(255, 255, 255, 0.7);
-+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.08);
-+  backdrop-filter: blur(14px);
-   animation: aiw-content-fade 0.55s ease 0.2s both;
- }
- 
- .aiw-input {
-   flex: 1;
--  border-radius: 16px;
--  border: 1px solid rgba(106, 113, 255, 0.2);
--  background: #fff;
-+  border-radius: 14px;
-+  border: 1px solid rgba(12, 15, 26, 0.04);
-+  background: rgba(255, 255, 255, 0.6);
-   color: var(--aiw-text);
--  padding: 14px 14px;
+-.aiw-user {
+-  justify-content: flex-end;
+-}
+-
+-.aiw-assistant {
+-  justify-content: flex-start;
+-}
+-
+-.aiw-bubble {
+-  max-width: 72ch;
+-  padding: 12px 14px;
+-  border-radius: 18px;
+-  white-space: pre-wrap;
+-  word-break: break-word;
 -  font-size: 16px;
+-  line-height: 1.5;
+-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
++.aiw-bubble{
++  background: var(--aiw-bubble-bg);
++  border: 1px solid var(--aiw-bubble-border);
++  border-radius: 12px;
 +  padding: 14px 16px;
-+  font-size: 15px;
-   outline: none;
--  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.08);
-+  box-shadow: inset 0 1px 1px rgba(15, 23, 42, 0.08);
++  box-shadow: 0 10px 22px rgba(0,0,0,.05);
++  backdrop-filter: blur(10px);
++  -webkit-backdrop-filter: blur(10px);
++  width: fit-content;
++  max-width: 720px;
  }
  
- .aiw-input::placeholder {
--  color: #9aa5c4;
-+  color: #9ba3b5;
+-.aiw-user .aiw-bubble {
+-  background: linear-gradient(135deg, rgba(140, 189, 255, 0.78), rgba(158, 132, 255, 0.82));
+-  color: #f9fbff;
+-  border-bottom-right-radius: 10px;
+-}
++.aiw-msg.aiw-left .aiw-bubble{ border-top-left-radius: 8px; }
++.aiw-msg.aiw-right .aiw-bubble{ border-top-right-radius: 8px; }
+ 
+-.aiw-assistant .aiw-bubble {
+-  background: linear-gradient(135deg, rgba(255, 184, 214, 0.7), rgba(167, 191, 255, 0.7));
+-  color: #0c0f1a;
+-  border: 1px solid rgba(255, 255, 255, 0.6);
+-  border-bottom-left-radius: 10px;
++.aiw-bubble p{
++  margin:0;
++  font-size: 14px;
++  line-height: 1.35;
++  color: rgba(0,0,0,.75);
++  white-space: pre-line;
  }
  
- .aiw-input:focus {
--  border-color: var(--aiw-primary);
--  box-shadow: 0 0 0 3px rgba(106, 113, 255, 0.18);
-+  border-color: rgba(121, 132, 255, 0.6);
-+  box-shadow: 0 0 0 3px rgba(121, 132, 255, 0.18);
++.aiw-composerWrap{ flex: 0 0 auto; display:flex; justify-content:center; padding-top: 10px; }
+ 
+-.aiw-status {
+-  padding: 0 4px;
+-  color: var(--aiw-muted);
+-  font-size: 13px;
+-  min-height: 20px;
+-  font-weight: 600;
+-  animation: aiw-content-fade 0.45s ease 0.18s both;
+-}
+-
+-.aiw-form {
+-  display: flex;
+-  align-items: center;
++.aiw-composer{
++  width: min(980px, 100%);
++  display:flex;
++  align-items:center;
+   gap: 12px;
+-  padding: 12px 14px 12px 18px;
+-  border-radius: 20px;
+-  background: rgba(255, 255, 255, 0.82);
+-  border: 1px solid rgba(255, 255, 255, 0.7);
+-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.08);
+-  backdrop-filter: blur(14px);
+-  animation: aiw-content-fade 0.55s ease 0.2s both;
+-}
+-
+-.aiw-input {
+-  flex: 1;
+-  border-radius: 14px;
+-  border: 1px solid rgba(12, 15, 26, 0.04);
+-  background: rgba(255, 255, 255, 0.6);
+-  color: var(--aiw-text);
++  background: var(--aiw-input-bg);
++  border: 1px solid var(--aiw-input-border);
++  border-radius: 10px;
+   padding: 14px 16px;
+-  font-size: 15px;
+-  outline: none;
+-  box-shadow: inset 0 1px 1px rgba(15, 23, 42, 0.08);
+-}
+-
+-.aiw-input::placeholder {
+-  color: #9ba3b5;
+-}
+-
+-.aiw-input:focus {
+-  border-color: rgba(121, 132, 255, 0.6);
+-  box-shadow: 0 0 0 3px rgba(121, 132, 255, 0.18);
++  box-shadow: 0 12px 26px rgba(0,0,0,.06);
++  backdrop-filter: blur(10px);
++  -webkit-backdrop-filter: blur(10px);
  }
  
- .aiw-send {
--  border-radius: 16px;
-+  border-radius: 14px;
-   border: 0;
--  background: linear-gradient(135deg, #6a71ff, #ff8fb1);
-+  background: linear-gradient(135deg, #93a2ff, #dca1ff);
-   color: #fff;
--  padding: 0 18px;
--  font-weight: 800;
-+  width: 44px;
-+  height: 44px;
-+  display: grid;
-+  place-items: center;
-   cursor: pointer;
--  box-shadow: 0 14px 30px rgba(106, 113, 255, 0.35);
-+  box-shadow: 0 14px 30px rgba(106, 113, 255, 0.28);
-   transition: transform 0.2s ease, box-shadow 0.2s ease;
+-.aiw-send {
+-  border-radius: 14px;
+-  border: 0;
+-  background: linear-gradient(135deg, #93a2ff, #dca1ff);
+-  color: #fff;
+-  width: 44px;
+-  height: 44px;
+-  display: grid;
+-  place-items: center;
+-  cursor: pointer;
+-  box-shadow: 0 14px 30px rgba(106, 113, 255, 0.28);
+-  transition: transform 0.2s ease, box-shadow 0.2s ease;
++.aiw-input{
++  border:0;
++  outline:0;
++  background:transparent;
++  width:100%;
++  font-size: 16px;
++  color: rgba(0,0,0,.72);
  }
  
-+.aiw-send svg {
-+  width: 18px;
-+  height: 18px;
-+}
-+
- .aiw-send:hover {
-   transform: translateY(-1px);
--  box-shadow: 0 18px 36px rgba(106, 113, 255, 0.42);
-+  box-shadow: 0 18px 36px rgba(106, 113, 255, 0.38);
+-.aiw-send svg {
+-  width: 18px;
+-  height: 18px;
+-}
++.aiw-input::placeholder{ color: rgba(0,0,0,.35); }
+ 
+-.aiw-send:hover {
+-  transform: translateY(-1px);
+-  box-shadow: 0 18px 36px rgba(106, 113, 255, 0.38);
++.aiw-send{
++  width: 38px;
++  height: 38px;
++  border:0;
++  background:transparent;
++  display:grid;
++  place-items:center;
++  padding:0;
++  cursor:pointer;
++  opacity:.7;
  }
  
- .aiw-send:active {
-   transform: translateY(1px);
- }
+-.aiw-send:active {
+-  transform: translateY(1px);
+-}
++.aiw-send svg{width:28px;height:28px}
++.aiw-send:hover{opacity:1}
  
- .aiw-panel .aiw-body,
--.aiw-panel .aiw-header {
-+.aiw-panel .aiw-hero {
-   opacity: 0;
-   transition: opacity 0.35s ease 0.2s;
- }
+-.aiw-panel .aiw-body,
+-.aiw-panel .aiw-hero {
+-  opacity: 0;
+-  transition: opacity 0.35s ease 0.2s;
+-}
++.aiw-status{ font-size: 13px; color: var(--aiw-muted); min-height: 18px; text-align:center; }
  
- .aiw-panel.aiw-open .aiw-body,
--.aiw-panel.aiw-open .aiw-header {
-+.aiw-panel.aiw-open .aiw-hero {
-   opacity: 1;
+-.aiw-panel.aiw-open .aiw-body,
+-.aiw-panel.aiw-open .aiw-hero {
+-  opacity: 1;
++@media (max-width: 900px){
++  .aiw-shell{padding: 40px 18px 18px;}
++  .aiw-hero{padding-top: 28px;}
++  .aiw-bubble{max-width: min(720px, 82vw);}
++  .aiw-composer{width: 100%;}
  }
 diff --git a/widget/widget.js b/widget/widget.js
-index db331bdfb58573c2dcd2658f21d7762c6a8f59e7..b795bff89331eb9d002ae066af6827f0ce99ea65 100644
+index b795bff89331eb9d002ae066af6827f0ce99ea65..de4d13317236b0413caa89be7010f2950b253734 100644
 --- a/widget/widget.js
 +++ b/widget/widget.js
-@@ -21,72 +21,83 @@
-   let visitorId = localStorage.getItem(visitorKey);
-   if (!visitorId) {
+@@ -23,136 +23,148 @@
      visitorId = (crypto?.randomUUID?.() || String(Math.random()).slice(2) + Date.now());
      localStorage.setItem(visitorKey, visitorId);
    }
@@ -413,34 +482,43 @@ index db331bdfb58573c2dcd2658f21d7762c6a8f59e7..b795bff89331eb9d002ae066af6827f0
    const panel = document.createElement("div");
    panel.className = "aiw-panel";
    panel.innerHTML = `
--    <div class="aiw-card">
--      <div class="aiw-header">
--        <div class="aiw-title">${escapeHtml(title)}</div>
--        <button class="aiw-close" title="Закрыть">✕</button>
-+    <div class="aiw-shell">
-+      <div class="aiw-hero">
-+        <div class="aiw-mark" aria-hidden="true">
-+          <svg width="26" height="26" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
-+            <path d="M13 0.75C13.4142 0.75 13.75 1.08579 13.75 1.5V4.25C13.75 4.66421 13.4142 5 13 5C12.5858 5 12.25 4.66421 12.25 4.25V1.5C12.25 1.08579 12.5858 0.75 13 0.75Z" fill="#0B1220"/>
-+            <path d="M13 21C13.4142 21 13.75 21.3358 13.75 21.75V24.5C13.75 24.9142 13.4142 25.25 13 25.25C12.5858 25.25 12.25 24.9142 12.25 24.5V21.75C12.25 21.3358 12.5858 21 13 21Z" fill="#0B1220"/>
-+            <path d="M21 13C21 13.4142 21.3358 13.75 21.75 13.75H24.5C24.9142 13.75 25.25 13.4142 25.25 13C25.25 12.5858 24.9142 12.25 24.5 12.25H21.75C21.3358 12.25 21 12.5858 21 13Z" fill="#0B1220"/>
-+            <path d="M0.75 13C0.75 13.4142 1.08579 13.75 1.5 13.75H4.25C4.66421 13.75 5 13.4142 5 13C5 12.5858 4.66421 12.25 4.25 12.25H1.5C1.08579 12.25 0.75 12.5858 0.75 13Z" fill="#0B1220"/>
-+            <circle cx="13" cy="13" r="3.25" stroke="#0B1220" stroke-width="1.5"/>
-+          </svg>
-+        </div>
-+        <div class="aiw-heading">Ask our AI anything</div>
+     <div class="aiw-shell">
+       <div class="aiw-hero">
+-        <div class="aiw-mark" aria-hidden="true">
+-          <svg width="26" height="26" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+-            <path d="M13 0.75C13.4142 0.75 13.75 1.08579 13.75 1.5V4.25C13.75 4.66421 13.4142 5 13 5C12.5858 5 12.25 4.66421 12.25 4.25V1.5C12.25 1.08579 12.5858 0.75 13 0.75Z" fill="#0B1220"/>
+-            <path d="M13 21C13.4142 21 13.75 21.3358 13.75 21.75V24.5C13.75 24.9142 13.4142 25.25 13 25.25C12.5858 25.25 12.25 24.9142 12.25 24.5V21.75C12.25 21.3358 12.5858 21 13 21Z" fill="#0B1220"/>
+-            <path d="M21 13C21 13.4142 21.3358 13.75 21.75 13.75H24.5C24.9142 13.75 25.25 13.4142 25.25 13C25.25 12.5858 24.9142 12.25 24.5 12.25H21.75C21.3358 12.25 21 12.5858 21 13Z" fill="#0B1220"/>
+-            <path d="M0.75 13C0.75 13.4142 1.08579 13.75 1.5 13.75H4.25C4.66421 13.75 5 13.4142 5 13C5 12.5858 4.66421 12.25 4.25 12.25H1.5C1.08579 12.25 0.75 12.5858 0.75 13Z" fill="#0B1220"/>
+-            <circle cx="13" cy="13" r="3.25" stroke="#0B1220" stroke-width="1.5"/>
+-          </svg>
+-        </div>
+-        <div class="aiw-heading">Ask our AI anything</div>
++        <svg class="aiw-sparkle" viewBox="0 0 64 64" fill="currentColor" aria-hidden="true">
++          <path d="M33.6 10.2c.4-1.5 2.5-1.5 2.9 0l1.5 5.3c.1.4.4.7.8.8l5.3 1.5c1.5.4 1.5 2.5 0 2.9l-5.3 1.5c-.4.1-.7.4-.8.8l-1.5 5.3c-.4 1.5-2.5 1.5-2.9 0l-1.5-5.3c-.1-.4-.4-.7-.8-.8L26 20.7c-1.5-.4-1.5-2.5 0-2.9l5.3-1.5c.4-.1.7-.4.8-.8l1.5-5.3z"/>
++          <path d="M18.4 28.8c.3-1.1 1.9-1.1 2.2 0l1 3.6c.1.3.3.5.6.6l3.6 1c1.1.3 1.1 1.9 0 2.2l-3.6 1c-.3.1-.5.3-.6.6l-1 3.6c-.3 1.1-1.9 1.1-2.2 0l-1-3.6c-.1-.3-.3-.5-.6-.6l-3.6-1c-1.1-.3-1.1-1.9 0-2.2l3.6-1c.3-.1.5-.3.6-.6l1-3.6z"/>
++        </svg>
++        <div class="aiw-title">Ask our AI anything</div>
        </div>
-       <div class="aiw-body">
-         <div class="aiw-messages" id="aiw-msgs"></div>
-         <div class="aiw-status" id="aiw-status"></div>
-         <form class="aiw-form" id="aiw-form">
+-      <div class="aiw-body">
+-        <div class="aiw-messages" id="aiw-msgs"></div>
+-        <div class="aiw-status" id="aiw-status"></div>
+-        <form class="aiw-form" id="aiw-form">
++
++      <div class="aiw-chat" aria-label="Chat messages" id="aiw-msgs"></div>
++      <div class="aiw-status" id="aiw-status"></div>
++
++      <div class="aiw-composerWrap">
++        <form class="aiw-composer" id="aiw-form" role="group" aria-label="Message composer">
            <input class="aiw-input" id="aiw-input" placeholder="Ask me anything about your projects" autocomplete="off"/>
--          <button class="aiw-send" type="submit">Send</button>
-+          <button class="aiw-send" type="submit" aria-label="Send">
-+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-+              <path d="M3.5 12L20.5 3.5L16 20.5L12.5 13.5L3.5 12Z" stroke="white" stroke-width="1.6" stroke-linejoin="round"/>
-+            </svg>
-+          </button>
+           <button class="aiw-send" type="submit" aria-label="Send">
+-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+-              <path d="M3.5 12L20.5 3.5L16 20.5L12.5 13.5L3.5 12Z" stroke="white" stroke-width="1.6" stroke-linejoin="round"/>
++            <svg viewBox="0 0 24 24" fill="none" stroke="rgba(130,140,155,.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
++              <path d="M22 2L11 13" />
++              <path d="M22 2L15 22l-4-9-9-4 20-7z" />
+             </svg>
+           </button>
          </form>
        </div>
      </div>
@@ -451,7 +529,6 @@ index db331bdfb58573c2dcd2658f21d7762c6a8f59e7..b795bff89331eb9d002ae066af6827f0
    document.body.appendChild(overlayClose);
    document.body.appendChild(panel);
  
--  const closeBtn = panel.querySelector(".aiw-close");
    const form = panel.querySelector("#aiw-form");
    const input = panel.querySelector("#aiw-input");
    const msgs = panel.querySelector("#aiw-msgs");
@@ -463,11 +540,28 @@ index db331bdfb58573c2dcd2658f21d7762c6a8f59e7..b795bff89331eb9d002ae066af6827f0
  
    function append(role, text) {
      const item = document.createElement("div");
-     item.className = "aiw-msg aiw-" + role;
-     item.innerHTML = `<div class="aiw-bubble">${escapeHtml(text)}</div>`;
+-    item.className = "aiw-msg aiw-" + role;
+-    item.innerHTML = `<div class="aiw-bubble">${escapeHtml(text)}</div>`;
++    const isUser = role === "user";
++    item.className = "aiw-msg " + (isUser ? "aiw-right" : "aiw-left");
++
++    const label = document.createElement("div");
++    label.className = "aiw-label";
++    label.textContent = isUser ? "ME" : "OUR AI";
++
++    const bubble = document.createElement("div");
++    bubble.className = "aiw-bubble";
++    const p = document.createElement("p");
++    p.textContent = text;
++    bubble.appendChild(p);
++
++    item.appendChild(label);
++    item.appendChild(bubble);
++
      msgs.appendChild(item);
      msgs.scrollTop = msgs.scrollHeight;
-     return item;
+-    return item;
++    return p;
    }
  
    async function ensureChat() {
@@ -477,54 +571,62 @@ index db331bdfb58573c2dcd2658f21d7762c6a8f59e7..b795bff89331eb9d002ae066af6827f0
        headers: { "Content-Type": "application/json" },
        body: JSON.stringify({ visitorId }),
      });
-@@ -151,50 +162,48 @@
-     panel.classList.add("aiw-open");
-     try {
-       await ensureChat();
-     } catch (e) {
-       console.error(e);
-     }
-     setTimeout(() => input.focus(), 120);
+     const j = await r.json();
+     if (!r.ok) throw new Error(j?.error || "start_failed");
+     chatId = j.chatId;
+     return chatId;
    }
  
-   function closePanel() {
-     isOpen = false;
-     overlay.classList.remove("aiw-show");
-     overlayClose.classList.remove("aiw-visible");
-     panel.classList.remove("aiw-open");
-     setTimeout(() => btn.classList.remove("aiw-hide"), 200);
+   async function sendMessage(text) {
+     await ensureChat();
+ 
+     append("user", text);
+     input.value = "";
+     input.focus();
+ 
+     setStatus("Печатает…");
+ 
+     // Stream assistant via SSE
+     const url = `${BASE}/api/widget/${projectId}/chat/${chatId}/stream?message=${encodeURIComponent(text)}`;
+     const es = new EventSource(url, { withCredentials: true });
+ 
+-    let assistantBubble = null;
++    let assistantText = null;
+     let acc = "";
+ 
+     es.addEventListener("token", (e) => {
+       const data = JSON.parse(e.data);
+       const t = data.t || "";
+-      if (!assistantBubble) {
+-        assistantBubble = append("assistant", "");
++      if (!assistantText) {
++        assistantText = append("assistant", "");
+       }
+       acc += t;
+-      assistantBubble.querySelector(".aiw-bubble").textContent = acc;
++      assistantText.textContent = acc;
+       msgs.scrollTop = msgs.scrollHeight;
+     });
+ 
+     es.addEventListener("waiting_for_human", () => {
+       setStatus("Оператор подключился. Подождите, пожалуйста…");
+     });
+ 
+     es.addEventListener("error", (e) => {
+       try {
+         const data = JSON.parse(e.data);
+         setStatus("Ошибка: " + (data.message || "unknown"));
+       } catch {
+         setStatus("Ошибка");
+       }
+       es.close();
+     });
+ 
+     es.addEventListener("done", () => {
+       setStatus("");
+       es.close();
+     });
    }
  
-   btn.addEventListener("click", async () => {
-     if (isOpen) {
-       closePanel();
-     } else {
-       await openPanel();
-     }
-   });
- 
--  closeBtn.addEventListener("click", closePanel);
-   overlayClose.addEventListener("click", closePanel);
--  overlay.addEventListener("click", closePanel);
- 
-   form.addEventListener("submit", async (e) => {
-     e.preventDefault();
-     const text = String(input.value || "").trim();
-     if (!text) return;
-     try {
-       await sendMessage(text);
-     } catch (err) {
-       console.error(err);
-       setStatus("Не удалось отправить сообщение");
-     }
-   });
- 
-   function escapeHtml(s) {
-     return String(s)
-       .replaceAll("&", "&amp;")
-       .replaceAll("<", "&lt;")
-       .replaceAll(">", "&gt;")
-       .replaceAll('"', "&quot;")
-       .replaceAll("'", "&#039;");
-   }
- })();
+   async function openPanel() {
+     isOpen = true;
