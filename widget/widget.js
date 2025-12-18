@@ -1,4 +1,3 @@
-\
 (function () {
   const script = document.currentScript;
   const projectId = script.getAttribute("data-project-id");
@@ -33,6 +32,9 @@
   btn.className = "aiw-fab " + (position === "left" ? "aiw-left" : "aiw-right");
   btn.innerHTML = "💬";
 
+  const overlay = document.createElement("div");
+  overlay.className = "aiw-overlay";
+
   const panel = document.createElement("div");
   panel.className = "aiw-panel " + (position === "left" ? "aiw-left" : "aiw-right");
   panel.innerHTML = `
@@ -51,6 +53,7 @@
   `;
 
   document.body.appendChild(btn);
+  document.body.appendChild(overlay);
   document.body.appendChild(panel);
 
   const closeBtn = panel.querySelector(".aiw-close");
@@ -132,23 +135,36 @@
     });
   }
 
+  async function openPanel() {
+    isOpen = true;
+    btn.classList.add("aiw-expanding");
+    overlay.classList.add("aiw-show");
+    panel.classList.add("aiw-open");
+    try {
+      await ensureChat();
+    } catch (e) {
+      console.error(e);
+    }
+    setTimeout(() => input.focus(), 50);
+    setTimeout(() => btn.classList.remove("aiw-expanding"), 650);
+  }
+
+  function closePanel() {
+    isOpen = false;
+    overlay.classList.remove("aiw-show");
+    panel.classList.remove("aiw-open");
+  }
+
   btn.addEventListener("click", async () => {
-    isOpen = !isOpen;
-    panel.classList.toggle("aiw-open", isOpen);
     if (isOpen) {
-      try {
-        await ensureChat();
-      } catch (e) {
-        console.error(e);
-      }
-      setTimeout(() => input.focus(), 50);
+      closePanel();
+    } else {
+      await openPanel();
     }
   });
 
-  closeBtn.addEventListener("click", () => {
-    isOpen = false;
-    panel.classList.remove("aiw-open");
-  });
+  closeBtn.addEventListener("click", closePanel);
+  overlay.addEventListener("click", closePanel);
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
