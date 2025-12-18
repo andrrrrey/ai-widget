@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Admin — AI Widget</title>
+  <link rel="stylesheet" href="/admin/admin.css"/>
+</head>
+<body>
+  <div class="wrap">
+    <h1>AI Widget — Админка (мультиклиент)</h1>
+
+    <div id="loginBox" class="card">
+      <h2>Вход</h2>
+      <div class="row">
+        <input id="login" placeholder="Логин" value="admin"/>
+        <input id="password" placeholder="Пароль" type="password"/>
+        <button id="btnLogin">Войти</button>
+      </div>
+      <div class="muted">Пароль берётся из переменной окружения <b>ADMIN_PASSWORD</b>.</div>
+      <div id="loginErr" class="err"></div>
+    </div>
+
+    <div id="app" style="display:none">
+      <div class="grid">
+        <div class="card">
+          <div class="cardHead">
+            <h2>Проекты (клиенты)</h2>
+            <button id="btnLogout" class="ghost">Выйти</button>
+          </div>
+
+          <div class="row">
+            <select id="projectSelect"></select>
+            <button id="btnRefreshProjects" class="ghost">Обновить</button>
+          </div>
+
+          <div style="height:10px"></div>
+
+          <h3 style="margin:10px 0 6px 0;font-size:14px">Создать проект</h3>
+          <div class="row">
+            <input id="newName" placeholder="Название проекта (клиент/сайт)"/>
+            <button id="btnCreateProject">Создать</button>
+          </div>
+          <div class="muted">После создания заполните assistant_id и allowed_origins.</div>
+
+          <div style="height:14px"></div>
+          <h3 style="margin:0 0 6px 0;font-size:14px">Настройки проекта</h3>
+          <div class="muted">Project ID (вставляется в data-project-id):</div>
+          <div class="mono" id="projectId"></div>
+
+          <div style="height:10px"></div>
+          <div class="muted">OpenAI API key (клиента)</div>
+          <input id="apiKey" placeholder="sk-..."/>
+
+          <div style="height:10px"></div>
+          <div class="muted">OpenAI assistant_id</div>
+          <input id="assistantId" placeholder="asst_..."/>
+
+          <div style="height:10px"></div>
+          <div class="muted">Allowed origins (по одному в строке)</div>
+          <textarea id="origins" rows="4" placeholder="https://clientsite.com&#10;https://www.clientsite.com"></textarea>
+
+          <div style="height:10px"></div>
+          <div class="muted">Инструкция (additional_instructions)</div>
+          <textarea id="instructions" rows="6" placeholder="Инструкция для ассистента..."></textarea>
+
+          <div class="row">
+            <button id="btnSaveProject">Сохранить</button>
+            <span id="saveOk" class="ok"></span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="cardHead">
+            <h2>Чаты проекта</h2>
+            <div class="row" style="gap:8px">
+              <select id="filterMode">
+                <option value="">Все режимы</option>
+                <option value="assistant">assistant</option>
+                <option value="human">human</option>
+              </select>
+              <select id="filterStatus">
+                <option value="">Все статусы</option>
+                <option value="open">open</option>
+                <option value="closed">closed</option>
+              </select>
+              <button id="btnRefreshChats" class="ghost">Обновить</button>
+            </div>
+          </div>
+          <div id="chatList" class="list"></div>
+        </div>
+      </div>
+
+      <div class="card" id="chatBox" style="display:none">
+        <div class="cardHead">
+          <h2>Чат: <span class="mono" id="chatId"></span></h2>
+          <div class="row">
+            <span class="pill" id="chatMode"></span>
+            <button id="btnTakeover" class="warn">Takeover</button>
+            <button id="btnRelease" class="ghost">Release</button>
+          </div>
+        </div>
+
+        <div id="messages" class="msgs"></div>
+
+        <form id="humanForm" class="row" style="margin-top:10px">
+          <input id="humanText" placeholder="Ответить как оператор..." />
+          <button type="submit">Отправить</button>
+        </form>
+        <div class="muted" style="margin-top:8px">
+          Human-ответ сохраняется и синхронизируется в OpenAI thread как <b>[OPERATOR] ...</b>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/admin/admin.js"></script>
+</body>
+</html>

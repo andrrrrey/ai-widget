@@ -1,0 +1,30 @@
+.aiw-fab{position:fixed;bottom:24px;z-index:99999;width:56px;height:56px;border-radius:999px;border:0;cursor:pointer;
+  box-shadow:0 10px 30px rgba(0,0,0,.25);font-size:22px;line-height:56px;text-align:center;background:#111827;color:#fff}
+.aiw-fab.aiw-right{right:24px}
+.aiw-fab.aiw-left{left:24px}
+
+.aiw-panel{position:fixed;bottom:92px;z-index:99999;width:360px;max-width:calc(100vw - 32px);height:520px;
+  background:#0b1220;color:#e8eefc;border-radius:14px;box-shadow:0 16px 50px rgba(0,0,0,.35);
+  overflow:hidden;display:none;border:1px solid rgba(255,255,255,.08)}
+.aiw-panel.aiw-right{right:24px}
+.aiw-panel.aiw-left{left:24px}
+.aiw-panel.aiw-open{display:block}
+
+.aiw-header{display:flex;align-items:center;justify-content:space-between;padding:12px 12px;border-bottom:1px solid rgba(255,255,255,.08);
+  background:rgba(255,255,255,.03)}
+.aiw-title{font-size:14px;font-weight:700}
+.aiw-close{border:0;background:transparent;color:#e8eefc;cursor:pointer;font-size:16px}
+
+.aiw-body{display:flex;flex-direction:column;height:calc(100% - 48px)}
+.aiw-messages{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+.aiw-msg{display:flex}
+.aiw-user{justify-content:flex-end}
+.aiw-assistant{justify-content:flex-start}
+.aiw-bubble{max-width:85%;padding:10px 12px;border-radius:14px;white-space:pre-wrap;word-break:break-word;font-size:14px;line-height:1.35}
+.aiw-user .aiw-bubble{background:#2563eb;color:white;border-bottom-right-radius:6px}
+.aiw-assistant .aiw-bubble{background:#111827;color:#e8eefc;border:1px solid rgba(255,255,255,.08);border-bottom-left-radius:6px}
+
+.aiw-status{padding:0 12px 8px 12px;color:#9fb3d9;font-size:12px;min-height:18px}
+.aiw-form{display:flex;gap:8px;padding:10px 12px;border-top:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02)}
+.aiw-input{flex:1;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0b1220;color:#e8eefc;padding:10px 10px;font-size:14px;outline:none}
+.aiw-send{border-radius:10px;border:0;background:#F58220;color:#111827;padding:10px 12px;font-weight:700;cursor:pointer}
