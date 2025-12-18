@@ -90,7 +90,7 @@
 
     const label = document.createElement("div");
     label.className = "aiw-label";
-    label.textContent = isUser ? "ME" : "OUR AI";
+    label.textContent = isUser ? "ME" : role === "human" ? "OPERATOR" : "OUR AI";
 
     const bubble = document.createElement("div");
     bubble.className = "aiw-bubble";
@@ -117,6 +117,41 @@
     if (!r.ok) throw new Error(j?.error || "start_failed");
     chatId = j.chatId;
     return chatId;
+  }
+
+  function renderMessages(items) {
+    msgs.innerHTML = "";
+    items.forEach((item) => append(item.role, item.content));
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  let pollTimer = null;
+  let pollInFlight = false;
+
+  async function syncMessages() {
+    if (!chatId || pollInFlight) return;
+    pollInFlight = true;
+    try {
+      const r = await fetch(`${BASE}/api/widget/${projectId}/chat/${chatId}/messages`);
+      if (!r.ok) throw new Error("messages_failed");
+      const j = await r.json();
+      if (Array.isArray(j.items)) renderMessages(j.items);
+    } catch (e) {
+      console.warn("syncMessages failed", e);
+    } finally {
+      pollInFlight = false;
+    }
+  }
+
+  function startPollingMessages() {
+    if (pollTimer) return;
+    pollTimer = setInterval(syncMessages, 2000);
+  }
+
+  function stopPollingMessages() {
+    if (!pollTimer) return;
+    clearInterval(pollTimer);
+    pollTimer = null;
   }
 
   async function sendMessage(text) {
@@ -148,6 +183,7 @@
 
     es.addEventListener("waiting_for_human", () => {
       setStatus("Оператор подключился. Подождите, пожалуйста…");
+      startPollingMessages();
     });
 
     es.addEventListener("error", (e) => {
@@ -174,6 +210,7 @@
     panel.classList.add("aiw-open");
     try {
       await ensureChat();
+      await syncMessages();
     } catch (e) {
       console.error(e);
     }
@@ -185,6 +222,7 @@
     overlay.classList.remove("aiw-show");
     overlayClose.classList.remove("aiw-visible");
     panel.classList.remove("aiw-open");
+    stopPollingMessages();
     setTimeout(() => btn.classList.remove("aiw-hide"), 200);
   }
 

@@ -1,618 +1,189 @@
-diff --git a/web-admin/admin.css b/web-admin/admin.css
-index f726d32f7cd95b28a343172e2264112e0c81d72a..f244c02dc3acdcd659ee943f4c5e3b9b4c85d11a 100644
---- a/web-admin/admin.css
-+++ b/web-admin/admin.css
-@@ -1,32 +1,95 @@
--:root{--bg:#0b1220;--panel:#121a2b;--text:#e8eefc;--muted:#9fb3d9;--accent:#F58220;--bad:#ff6b6b;--good:#22c55e;--border:#1f2a44}
-+:root{
-+  --bg:#f5f7fb;
-+  --panel:#ffffff;
-+  --text:#1f2937;
-+  --muted:#6b7280;
-+  --accent:#5d5af6;
-+  --bad:#e11d48;
-+  --good:#16a34a;
-+  --border:#e5e7eb;
-+  --shadow:0 12px 40px rgba(17,24,39,0.08);
-+}
-+
- *{box-sizing:border-box}
--body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,Arial}
--.wrap{max-width:1200px;margin:24px auto;padding:0 14px}
--h1{font-size:20px;margin:0 0 14px 0}
--h2{font-size:16px;margin:0}
--.card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px}
--.grid{display:grid;grid-template-columns:1.1fr 1fr;gap:12px;align-items:start}
--@media (max-width:980px){.grid{grid-template-columns:1fr}}
-+body{margin:0;background:var(--bg);color:var(--text);font-family:"Inter",ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,Arial}
-+
-+.wrap{max-width:1280px;margin:28px auto;padding:0 16px}
-+
-+h1{font-size:26px;margin:0 0 6px 0}
-+h2{font-size:22px;margin:0}
-+h3{margin:0;font-size:17px}
-+
-+.card{background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:18px;box-shadow:var(--shadow)}
-+
-+.loginCard{display:flex;justify-content:space-between;align-items:flex-start;gap:32px;max-width:720px;margin:0 auto}
-+.loginForm{display:flex;flex-direction:column;gap:12px;width:320px}
-+
-+.appShell{display:grid;grid-template-columns:320px 1fr;gap:20px;align-items:start}
-+.sidebar{background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:16px;box-shadow:var(--shadow);min-height:80vh}
-+.logoRow{display:flex;justify-content:space-between;align-items:center}
-+.logo{font-weight:800;font-size:18px}
-+.section{display:flex;flex-direction:column;gap:10px}
-+.labelRow{display:flex;justify-content:space-between;align-items:center;font-weight:600;font-size:14px}
-+.sidebarFooter{margin-top:auto;display:flex;flex-direction:column;gap:8px}
-+
-+.content{display:flex;flex-direction:column;gap:18px}
-+.page{background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:22px;box-shadow:var(--shadow)}
-+.pageHead{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
-+.eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin:0 0 6px 0;font-weight:700}
-+
-+.chatLayout{display:grid;grid-template-columns:340px 1fr;gap:16px;align-items:start}
-+.chatListCard{background:linear-gradient(135deg,rgba(93,90,246,0.08),rgba(93,90,246,0.02));border:1px solid var(--border);border-radius:18px;padding:16px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px}
-+.listHead{display:flex;justify-content:space-between;align-items:center}
-+.placeholder{height:100%;display:flex;align-items:center;justify-content:center}
-+.empty{text-align:center;padding:40px;background:rgba(93,90,246,0.04);border:1px dashed var(--border);border-radius:16px}
-+
- .row{display:flex;gap:10px;align-items:center}
--.cardHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
--.muted{color:var(--muted);font-size:12px;margin-top:6px}
--.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
--input,textarea,select{width:100%;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:#0b1220;color:var(--text);padding:10px 10px;font-size:14px;outline:none}
-+.row.tight select{flex:1}
-+
-+.muted{color:var(--muted);font-size:13px;margin:0}
-+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;overflow-wrap:anywhere}
-+
-+input,textarea,select{width:100%;border-radius:12px;border:1px solid var(--border);background:#f9fafb;color:var(--text);padding:10px 12px;font-size:14px;outline:none;transition:border-color .2s,box-shadow .2s}
-+input:focus,textarea:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(93,90,246,0.15);background:white}
- textarea{resize:vertical}
--button{border-radius:12px;border:0;background:var(--accent);color:#111827;padding:10px 12px;font-weight:800;cursor:pointer}
--button.ghost{background:transparent;border:1px solid rgba(255,255,255,.14);color:var(--text);font-weight:700}
--button.warn{background:#ef4444;color:white}
--.list{display:flex;flex-direction:column;gap:8px;max-height:420px;overflow:auto;padding-right:6px}
--.item{padding:10px;border:1px solid rgba(255,255,255,.08);border-radius:12px;cursor:pointer;background:rgba(0,0,0,.15)}
--.item:hover{border-color:rgba(255,255,255,.2)}
--.pill{display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.14);font-size:12px;color:var(--muted)}
--.msgs{max-height:520px;overflow:auto;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px;background:rgba(0,0,0,.12);display:flex;flex-direction:column;gap:10px}
-+
-+button{border-radius:12px;border:1px solid transparent;background:var(--accent);color:white;padding:10px 14px;font-weight:700;cursor:pointer;transition:transform .1s ease,box-shadow .2s,background .2s}
-+button:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(93,90,246,0.25)}
-+button:active{transform:translateY(0)}
-+button.ghost{background:transparent;color:var(--text);border-color:var(--border);box-shadow:none}
-+button.ghost:hover{background:#eef2ff}
-+button.icon{padding:8px 10px}
-+button.text{color:var(--muted);border-color:transparent}
-+button.primary{background:linear-gradient(135deg,#5d5af6,#7c5dfa);color:white}
-+button.full{width:100%}
-+
-+.list{display:flex;flex-direction:column;gap:10px;max-height:620px;overflow:auto;padding-right:6px}
-+.item{padding:12px;border:1px solid var(--border);border-radius:14px;cursor:pointer;background:white;transition:border-color .2s,transform .1s}
-+.item:hover{border-color:var(--accent);transform:translateY(-1px)}
-+.pill{display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;border:1px solid var(--border);font-size:12px;color:var(--muted);gap:6px}
-+
-+.msgs{max-height:620px;overflow:auto;border:1px solid var(--border);border-radius:14px;padding:12px;background:#f8fafc;display:flex;flex-direction:column;gap:10px}
- .msg{display:flex}
- .msg.user{justify-content:flex-end}
- .msg.assistant,.msg.human{justify-content:flex-start}
--.bubble{max-width:78%;padding:10px 12px;border-radius:14px;white-space:pre-wrap;word-break:break-word;font-size:14px;line-height:1.35}
--.msg.user .bubble{background:#2563eb;color:white;border-bottom-right-radius:6px}
--.msg.assistant .bubble{background:#111827;border:1px solid rgba(255,255,255,.08);border-bottom-left-radius:6px}
--.msg.human .bubble{background:rgba(245,130,32,.18);border:1px solid rgba(245,130,32,.35);border-bottom-left-radius:6px}
--.err{color:var(--bad);margin-top:8px;font-size:13px}
--.ok{color:var(--good);font-size:12px}
-+.bubble{max-width:78%;padding:12px 14px;border-radius:14px;white-space:pre-wrap;word-break:break-word;font-size:14px;line-height:1.35;box-shadow:var(--shadow);background:white}
-+.msg.user .bubble{background:#5d5af6;color:white;box-shadow:none;border-bottom-right-radius:6px}
-+.msg.assistant .bubble{background:white;border:1px solid var(--border);border-bottom-left-radius:6px}
-+.msg.human .bubble{background:rgba(93,90,246,0.12);border:1px solid rgba(93,90,246,0.35);border-bottom-left-radius:6px}
-+
-+.err{color:var(--bad);margin-top:4px;font-size:13px}
-+.ok{color:var(--good);font-size:13px}
-+
-+.settingsCard{display:flex;flex-direction:column;gap:16px}
-+.formGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
-+
-+@media (max-width:1180px){
-+  .appShell{grid-template-columns:1fr}
-+  .sidebar{min-height:auto}
-+}
-+
-+@media (max-width:980px){
-+  .chatLayout{grid-template-columns:1fr}
-+  .chatBox{order:2}
-+  .chatListCard{order:1}
-+}
-diff --git a/web-admin/admin.js b/web-admin/admin.js
-index 2300d8f21190b91867d32e191bd1453c404b1a58..719a54ac51e8c7d21a2a113f14852c8935e9b1b1 100644
---- a/web-admin/admin.js
-+++ b/web-admin/admin.js
-@@ -1,113 +1,123 @@
- const $ = (s) => document.querySelector(s);
- 
- let selectedProjectId = null;
- let selectedChatId = null;
- let pollTimer = null;
-+let projectsCache = [];
- 
- async function api(path, opts={}){
-   const r = await fetch(path, { credentials:"include", ...opts });
-   const ct = r.headers.get("content-type")||"";
-   const data = ct.includes("application/json") ? await r.json() : await r.text();
-   if(!r.ok) throw Object.assign(new Error(data?.error || "api_error"), { data, status:r.status });
-   return data;
- }
- 
- function escapeHtml(s){
-   return String(s)
-     .replaceAll("&","&amp;")
-     .replaceAll("<","&lt;")
-     .replaceAll(">","&gt;")
-     .replaceAll('"',"&quot;")
-     .replaceAll("'","&#039;");
- }
- 
-+function showPage(page){
-+  const isSettings = page === "settings";
-+  $("#pageChats").style.display = isSettings ? "none" : "block";
-+  $("#pageSettings").style.display = isSettings ? "block" : "none";
-+}
-+
- async function login(){
-   $("#loginErr").textContent = "";
-   const login = $("#login").value.trim();
-   const password = $("#password").value;
-   await api("/api/admin/login", {
-     method:"POST",
-     headers:{ "Content-Type":"application/json" },
-     body: JSON.stringify({ login, password })
-   });
-   $("#loginBox").style.display = "none";
--  $("#app").style.display = "block";
-+  $("#app").style.display = "grid";
-   await refreshProjects(true);
- }
- 
- async function logout(){
-   await api("/api/admin/logout", { method:"POST" });
-   location.reload();
- }
- 
- async function refreshProjects(autoSelectFirst=false){
-   const j = await api("/api/admin/projects");
-   const items = j.items || [];
-+  projectsCache = items;
-   const sel = $("#projectSelect");
-   sel.innerHTML = "";
-   for(const p of items){
-     const opt = document.createElement("option");
-     opt.value = p.id;
--    opt.textContent = `${p.name} — ${p.id}`;
-+    opt.textContent = p.name;
-     sel.appendChild(opt);
-   }
- 
-   if(autoSelectFirst && items[0]){
-     selectedProjectId = items[0].id;
-     sel.value = selectedProjectId;
-   } else if(selectedProjectId){
-     sel.value = selectedProjectId;
-   } else if(items[0]){
-     selectedProjectId = items[0].id;
-     sel.value = selectedProjectId;
-   }
- 
-   if(selectedProjectId) await loadProject(selectedProjectId);
-   await refreshChats();
- }
- 
- async function createProject(){
--  const name = $("#newName").value.trim() || "New Project";
-+  const name = prompt("Название проекта", "Новый проект")?.trim();
-+  if(!name) return;
-   const j = await api("/api/admin/projects", {
-     method:"POST",
-     headers:{ "Content-Type":"application/json" },
-     body: JSON.stringify({ name, openai_api_key:"", assistant_id:"", instructions:"", allowed_origins:[] })
-   });
--  $("#newName").value = "";
-   selectedProjectId = j.project.id;
-   await refreshProjects(false);
-   $("#projectSelect").value = selectedProjectId;
-   await loadProject(selectedProjectId);
-   await refreshChats();
- }
- 
- async function loadProject(projectId){
-   const j = await api(`/api/admin/projects/${projectId}`);
-   const p = j.project;
-   selectedProjectId = p.id;
- 
-+  const projectName = projectsCache.find(x => x.id === p.id)?.name || "Проект";
-+  $("#projectBadge").textContent = projectName;
-   $("#projectId").textContent = p.id;
-   $("#apiKey").value = p.openai_api_key || "";
-   $("#assistantId").value = p.assistant_id || "";
-   $("#instructions").value = p.instructions || "";
-   $("#origins").value = (p.allowed_origins || []).join("\n");
- }
- 
- async function saveProject(){
-   if(!selectedProjectId) return;
-   $("#saveOk").textContent = "";
- 
-   const openai_api_key = $("#apiKey").value.trim();
-   const assistant_id = $("#assistantId").value.trim();
-   const instructions = $("#instructions").value;
-   const allowed_origins = $("#origins").value
-     .split("\n")
-     .map(s => s.trim())
-     .filter(Boolean);
- 
-   await api(`/api/admin/projects/${selectedProjectId}`, {
-     method:"PATCH",
-     headers:{ "Content-Type":"application/json" },
-     body: JSON.stringify({ openai_api_key, assistant_id, instructions, allowed_origins })
-   });
- 
-@@ -130,50 +140,51 @@ async function refreshChats(){
- function renderChats(items){
-   const box = $("#chatList");
-   box.innerHTML = "";
-   if(!items.length){
-     box.innerHTML = `<div class="muted">Пока нет чатов</div>`;
-     return;
-   }
-   for(const c of items){
-     const div = document.createElement("div");
-     div.className = "item";
-     div.innerHTML = `
-       <div class="row" style="justify-content:space-between">
-         <div class="mono">${escapeHtml(c.id)}</div>
-         <span class="pill">${escapeHtml(c.mode)} • ${escapeHtml(c.status)}</span>
+diff --git a/widget/widget.js b/widget/widget.js
+index de4d13317236b0413caa89be7010f2950b253734..aeb62214febfc23180c87d014d931843cb829903 100644
+--- a/widget/widget.js
++++ b/widget/widget.js
+@@ -68,145 +68,183 @@
        </div>
-       <div class="muted">updated: ${new Date(c.updated_at).toLocaleString()}</div>
-       <div class="muted">visitor: ${escapeHtml(c.visitor_id || "-")}</div>
-     `;
-     div.addEventListener("click", ()=> openChat(c.id));
-     box.appendChild(div);
+     </div>
+   `;
+ 
+   document.body.appendChild(btn);
+   document.body.appendChild(overlay);
+   document.body.appendChild(overlayClose);
+   document.body.appendChild(panel);
+ 
+   const form = panel.querySelector("#aiw-form");
+   const input = panel.querySelector("#aiw-input");
+   const msgs = panel.querySelector("#aiw-msgs");
+   const statusEl = panel.querySelector("#aiw-status");
+ 
+   function setStatus(text) {
+     statusEl.textContent = text || "";
    }
- }
  
- async function openChat(chatId){
-   selectedChatId = chatId;
-+  $("#chatPlaceholder").style.display = "none";
-   $("#chatBox").style.display = "block";
-   $("#chatId").textContent = chatId;
-   await refreshChatView();
-   startPolling();
- }
+   function append(role, text) {
+     const item = document.createElement("div");
+     const isUser = role === "user";
+     item.className = "aiw-msg " + (isUser ? "aiw-right" : "aiw-left");
  
- async function refreshChatView(){
-   if(!selectedChatId) return;
-   const items = await api(`/api/admin/chats/${selectedChatId}/messages`);
-   renderMessages(items.items || []);
+     const label = document.createElement("div");
+     label.className = "aiw-label";
+-    label.textContent = isUser ? "ME" : "OUR AI";
++    label.textContent = isUser ? "ME" : role === "human" ? "OPERATOR" : "OUR AI";
  
-   const chats = await api(`/api/admin/projects/${selectedProjectId}/chats`);
-   const chat = (chats.items || []).find(x => x.id === selectedChatId);
-   $("#chatMode").textContent = chat ? chat.mode : "unknown";
- }
+     const bubble = document.createElement("div");
+     bubble.className = "aiw-bubble";
+     const p = document.createElement("p");
+     p.textContent = text;
+     bubble.appendChild(p);
  
- function renderMessages(items){
-   const box = $("#messages");
-   box.innerHTML = "";
-   for(const m of items){
-     const div = document.createElement("div");
-     div.className = "msg " + m.role;
-     div.innerHTML = `<div class="bubble">${escapeHtml(m.content)}</div>`;
-     box.appendChild(div);
+     item.appendChild(label);
+     item.appendChild(bubble);
+ 
+     msgs.appendChild(item);
+     msgs.scrollTop = msgs.scrollHeight;
+     return p;
    }
-@@ -195,41 +206,50 @@ async function takeover(){
- }
  
- async function release(){
-   if(!selectedChatId) return;
-   await api(`/api/admin/chats/${selectedChatId}/release`, { method:"POST" });
-   await refreshChats();
-   await refreshChatView();
- }
+   async function ensureChat() {
+     if (chatId) return chatId;
+     const r = await fetch(`${BASE}/api/widget/${projectId}/chat/start`, {
+       method: "POST",
+       headers: { "Content-Type": "application/json" },
+       body: JSON.stringify({ visitorId }),
+     });
+     const j = await r.json();
+     if (!r.ok) throw new Error(j?.error || "start_failed");
+     chatId = j.chatId;
+     return chatId;
+   }
  
- async function sendHuman(e){
-   e.preventDefault();
-   if(!selectedChatId) return;
-   const textEl = $("#humanText");
-   const text = textEl.value.trim();
-   if(!text) return;
++  function renderMessages(items) {
++    msgs.innerHTML = "";
++    items.forEach((item) => append(item.role, item.content));
++    msgs.scrollTop = msgs.scrollHeight;
++  }
++
++  let pollTimer = null;
++  let pollInFlight = false;
++
++  async function syncMessages() {
++    if (!chatId || pollInFlight) return;
++    pollInFlight = true;
++    try {
++      const r = await fetch(`${BASE}/api/widget/${projectId}/chat/${chatId}/messages`);
++      if (!r.ok) throw new Error("messages_failed");
++      const j = await r.json();
++      if (Array.isArray(j.items)) renderMessages(j.items);
++    } catch (e) {
++      console.warn("syncMessages failed", e);
++    } finally {
++      pollInFlight = false;
++    }
++  }
++
++  function startPollingMessages() {
++    if (pollTimer) return;
++    pollTimer = setInterval(syncMessages, 2000);
++  }
++
++  function stopPollingMessages() {
++    if (!pollTimer) return;
++    clearInterval(pollTimer);
++    pollTimer = null;
++  }
++
+   async function sendMessage(text) {
+     await ensureChat();
  
-   await api(`/api/admin/chats/${selectedChatId}/message`, {
-     method:"POST",
-     headers:{ "Content-Type":"application/json" },
-     body: JSON.stringify({ text })
+     append("user", text);
+     input.value = "";
+     input.focus();
+ 
+     setStatus("Печатает…");
+ 
+     // Stream assistant via SSE
+     const url = `${BASE}/api/widget/${projectId}/chat/${chatId}/stream?message=${encodeURIComponent(text)}`;
+     const es = new EventSource(url, { withCredentials: true });
+ 
+     let assistantText = null;
+     let acc = "";
+ 
+     es.addEventListener("token", (e) => {
+       const data = JSON.parse(e.data);
+       const t = data.t || "";
+       if (!assistantText) {
+         assistantText = append("assistant", "");
+       }
+       acc += t;
+       assistantText.textContent = acc;
+       msgs.scrollTop = msgs.scrollHeight;
+     });
+ 
+     es.addEventListener("waiting_for_human", () => {
+       setStatus("Оператор подключился. Подождите, пожалуйста…");
++      startPollingMessages();
+     });
+ 
+     es.addEventListener("error", (e) => {
+       try {
+         const data = JSON.parse(e.data);
+         setStatus("Ошибка: " + (data.message || "unknown"));
+       } catch {
+         setStatus("Ошибка");
+       }
+       es.close();
+     });
+ 
+     es.addEventListener("done", () => {
+       setStatus("");
+       es.close();
+     });
+   }
+ 
+   async function openPanel() {
+     isOpen = true;
+     btn.classList.add("aiw-hide");
+     overlay.classList.add("aiw-show");
+     overlayClose.classList.add("aiw-visible");
+     panel.classList.add("aiw-open");
+     try {
+       await ensureChat();
++      await syncMessages();
+     } catch (e) {
+       console.error(e);
+     }
+     setTimeout(() => input.focus(), 120);
+   }
+ 
+   function closePanel() {
+     isOpen = false;
+     overlay.classList.remove("aiw-show");
+     overlayClose.classList.remove("aiw-visible");
+     panel.classList.remove("aiw-open");
++    stopPollingMessages();
+     setTimeout(() => btn.classList.remove("aiw-hide"), 200);
+   }
+ 
+   btn.addEventListener("click", async () => {
+     if (isOpen) {
+       closePanel();
+     } else {
+       await openPanel();
+     }
    });
-   textEl.value = "";
-   await refreshChatView();
- }
  
-+function resetChatView(){
-+  selectedChatId = null;
-+  $("#chatBox").style.display = "none";
-+  $("#chatPlaceholder").style.display = "flex";
-+}
-+
- $("#btnLogin").addEventListener("click", ()=> login().catch(e => $("#loginErr").textContent = "Ошибка входа"));
- $("#btnLogout").addEventListener("click", ()=> logout().catch(()=>{}));
- $("#btnRefreshProjects").addEventListener("click", ()=> refreshProjects(false).catch(()=>{}));
- $("#btnCreateProject").addEventListener("click", ()=> createProject().catch(()=>{}));
- $("#btnSaveProject").addEventListener("click", ()=> saveProject().catch(()=>{}));
- $("#btnRefreshChats").addEventListener("click", ()=> refreshChats().catch(()=>{}));
- $("#projectSelect").addEventListener("change", async (e)=>{
-   selectedProjectId = e.target.value;
--  selectedChatId = null;
--  $("#chatBox").style.display = "none";
-+  resetChatView();
-   await loadProject(selectedProjectId);
-   await refreshChats();
- });
- $("#btnTakeover").addEventListener("click", ()=> takeover().catch(()=>{}));
- $("#btnRelease").addEventListener("click", ()=> release().catch(()=>{}));
- $("#humanForm").addEventListener("submit", sendHuman);
-+$("#btnOpenSettings").addEventListener("click", ()=> showPage("settings"));
-+$("#btnBackToChats").addEventListener("click", ()=> showPage("chats"));
-+
-+showPage("chats");
-diff --git a/web-admin/index.html b/web-admin/index.html
-index 71728f273570024bb77ae8f85f256fb190a2b6f5..18a95ed98f1f62a76bcc9158a3cf24002638940f 100644
---- a/web-admin/index.html
-+++ b/web-admin/index.html
-@@ -1,119 +1,167 @@
- <!doctype html>
- <html lang="ru">
- <head>
-   <meta charset="utf-8"/>
-   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-   <title>Admin — AI Widget</title>
-   <link rel="stylesheet" href="/admin/admin.css"/>
- </head>
- <body>
-   <div class="wrap">
--    <h1>AI Widget — Админка (мультиклиент)</h1>
--
--    <div id="loginBox" class="card">
--      <h2>Вход</h2>
--      <div class="row">
-+    <div id="loginBox" class="card loginCard">
-+      <div>
-+        <h1>AI Widget — Админка</h1>
-+        <p class="muted">Управление проектами и чатами в едином интерфейсе.</p>
-+      </div>
-+      <div class="loginForm">
-         <input id="login" placeholder="Логин" value="admin"/>
-         <input id="password" placeholder="Пароль" type="password"/>
-         <button id="btnLogin">Войти</button>
-+        <div class="muted">Пароль берётся из переменной окружения <b>ADMIN_PASSWORD</b>.</div>
-+        <div id="loginErr" class="err"></div>
-       </div>
--      <div class="muted">Пароль берётся из переменной окружения <b>ADMIN_PASSWORD</b>.</div>
--      <div id="loginErr" class="err"></div>
-     </div>
+   overlayClose.addEventListener("click", closePanel);
  
--    <div id="app" style="display:none">
--      <div class="grid">
--        <div class="card">
--          <div class="cardHead">
--            <h2>Проекты (клиенты)</h2>
--            <button id="btnLogout" class="ghost">Выйти</button>
--          </div>
-+    <div id="app" class="appShell" style="display:none">
-+      <aside class="sidebar">
-+        <div class="logoRow">
-+          <div class="logo">AI Widget</div>
-+          <button id="btnCreateProject" class="primary">+ Новый проект</button>
-+        </div>
+   form.addEventListener("submit", async (e) => {
+     e.preventDefault();
+     const text = String(input.value || "").trim();
+     if (!text) return;
+     try {
+       await sendMessage(text);
+     } catch (err) {
+       console.error(err);
+       setStatus("Не удалось отправить сообщение");
+     }
+   });
  
--          <div class="row">
--            <select id="projectSelect"></select>
--            <button id="btnRefreshProjects" class="ghost">Обновить</button>
-+        <div class="section">
-+          <div class="labelRow">
-+            <label for="projectSelect">Проекты</label>
-+            <button id="btnRefreshProjects" class="icon ghost" title="Обновить">⟳</button>
-           </div>
-+          <select id="projectSelect"></select>
-+        </div>
- 
--          <div style="height:10px"></div>
--
--          <h3 style="margin:10px 0 6px 0;font-size:14px">Создать проект</h3>
--          <div class="row">
--            <input id="newName" placeholder="Название проекта (клиент/сайт)"/>
--            <button id="btnCreateProject">Создать</button>
-+        <div class="section">
-+          <div class="labelRow">
-+            <label>Фильтр чатов</label>
-+            <button id="btnRefreshChats" class="icon ghost" title="Обновить">⟳</button>
-           </div>
--          <div class="muted">После создания заполните assistant_id и allowed_origins.</div>
--
--          <div style="height:14px"></div>
--          <h3 style="margin:0 0 6px 0;font-size:14px">Настройки проекта</h3>
--          <div class="muted">Project ID (вставляется в data-project-id):</div>
--          <div class="mono" id="projectId"></div>
--
--          <div style="height:10px"></div>
--          <div class="muted">OpenAI API key (клиента)</div>
--          <input id="apiKey" placeholder="sk-..."/>
-+          <div class="row tight">
-+            <select id="filterMode">
-+              <option value="">Все режимы</option>
-+              <option value="assistant">assistant</option>
-+              <option value="human">human</option>
-+            </select>
-+            <select id="filterStatus">
-+              <option value="">Все статусы</option>
-+              <option value="open">open</option>
-+              <option value="closed">closed</option>
-+            </select>
-+          </div>
-+        </div>
- 
--          <div style="height:10px"></div>
--          <div class="muted">OpenAI assistant_id</div>
--          <input id="assistantId" placeholder="asst_..."/>
-+        <div class="sidebarFooter">
-+          <button id="btnOpenSettings" class="ghost full">Настройки проекта</button>
-+          <button id="btnLogout" class="ghost text">Выйти</button>
-+        </div>
-+      </aside>
-+
-+      <main class="content">
-+        <section id="pageChats" class="page">
-+          <div class="pageHead">
-+            <div>
-+              <p class="eyebrow">Работа с чатами</p>
-+              <h2>Чаты из виджета</h2>
-+              <p class="muted">Следите за диалогами пользователей и подключайтесь при необходимости.</p>
-+            </div>
-+          </div>
- 
--          <div style="height:10px"></div>
--          <div class="muted">Allowed origins (по одному в строке)</div>
--          <textarea id="origins" rows="4" placeholder="https://clientsite.com&#10;https://www.clientsite.com"></textarea>
-+          <div class="chatLayout">
-+            <div class="chatListCard">
-+              <div class="listHead">
-+                <h3>Чаты проекта</h3>
-+                <span id="projectBadge" class="pill muted"></span>
-+              </div>
-+              <div id="chatList" class="list"></div>
-+            </div>
- 
--          <div style="height:10px"></div>
--          <div class="muted">Инструкция (additional_instructions)</div>
--          <textarea id="instructions" rows="6" placeholder="Инструкция для ассистента..."></textarea>
-+            <div class="chatBox card" id="chatBox" style="display:none">
-+              <div class="cardHead">
-+                <div>
-+                  <p class="eyebrow">Активный чат</p>
-+                  <h3 class="mono" id="chatId"></h3>
-+                </div>
-+                <div class="row">
-+                  <span class="pill" id="chatMode"></span>
-+                  <button id="btnTakeover" class="ghost">Takeover</button>
-+                  <button id="btnRelease" class="ghost">Release</button>
-+                </div>
-+              </div>
-+
-+              <div id="messages" class="msgs"></div>
-+
-+              <form id="humanForm" class="row" style="margin-top:10px">
-+                <input id="humanText" placeholder="Ответить как оператор..." />
-+                <button type="submit">Отправить</button>
-+              </form>
-+              <div class="muted" style="margin-top:8px">
-+                Human-ответ сохраняется и синхронизируется в OpenAI thread как <b>[OPERATOR] ...</b>
-+              </div>
-+            </div>
- 
--          <div class="row">
--            <button id="btnSaveProject">Сохранить</button>
--            <span id="saveOk" class="ok"></span>
-+            <div class="placeholder" id="chatPlaceholder">
-+              <div class="empty">
-+                <p class="eyebrow">Нет выбранного чата</p>
-+                <h3>Выберите чат слева, чтобы открыть переписку</h3>
-+                <p class="muted">Чаты обновляются в реальном времени. Используйте фильтры в панели слева.</p>
-+              </div>
-+            </div>
-           </div>
--        </div>
--
--        <div class="card">
--          <div class="cardHead">
--            <h2>Чаты проекта</h2>
--            <div class="row" style="gap:8px">
--              <select id="filterMode">
--                <option value="">Все режимы</option>
--                <option value="assistant">assistant</option>
--                <option value="human">human</option>
--              </select>
--              <select id="filterStatus">
--                <option value="">Все статусы</option>
--                <option value="open">open</option>
--                <option value="closed">closed</option>
--              </select>
--              <button id="btnRefreshChats" class="ghost">Обновить</button>
-+        </section>
-+
-+        <section id="pageSettings" class="page" style="display:none">
-+          <div class="pageHead">
-+            <div>
-+              <p class="eyebrow">Настройки</p>
-+              <h2>Настройки проекта</h2>
-+              <p class="muted">Изменяйте ключи OpenAI, разрешённые домены и инструкции ассистента.</p>
-+            </div>
-+            <div class="row">
-+              <button id="btnBackToChats" class="ghost">← Назад к чатам</button>
-             </div>
-           </div>
--          <div id="chatList" class="list"></div>
--        </div>
--      </div>
- 
--      <div class="card" id="chatBox" style="display:none">
--        <div class="cardHead">
--          <h2>Чат: <span class="mono" id="chatId"></span></h2>
--          <div class="row">
--            <span class="pill" id="chatMode"></span>
--            <button id="btnTakeover" class="warn">Takeover</button>
--            <button id="btnRelease" class="ghost">Release</button>
--          </div>
--        </div>
-+          <div class="settingsCard card">
-+            <div class="muted">Project ID (вставляется в data-project-id):</div>
-+            <div class="mono" id="projectId"></div>
-+
-+            <div class="formGrid">
-+              <div>
-+                <label class="muted">OpenAI API key (клиента)</label>
-+                <input id="apiKey" placeholder="sk-..."/>
-+              </div>
-+              <div>
-+                <label class="muted">OpenAI assistant_id</label>
-+                <input id="assistantId" placeholder="asst_..."/>
-+              </div>
-+            </div>
- 
--        <div id="messages" class="msgs"></div>
-+            <div>
-+              <label class="muted">Allowed origins (по одному в строке)</label>
-+              <textarea id="origins" rows="4" placeholder="https://clientsite.com&#10;https://www.clientsite.com"></textarea>
-+            </div>
- 
--        <form id="humanForm" class="row" style="margin-top:10px">
--          <input id="humanText" placeholder="Ответить как оператор..." />
--          <button type="submit">Отправить</button>
--        </form>
--        <div class="muted" style="margin-top:8px">
--          Human-ответ сохраняется и синхронизируется в OpenAI thread как <b>[OPERATOR] ...</b>
--        </div>
--      </div>
-+            <div>
-+              <label class="muted">Инструкция (additional_instructions)</label>
-+              <textarea id="instructions" rows="6" placeholder="Инструкция для ассистента..."></textarea>
-+            </div>
-+
-+            <div class="row">
-+              <button id="btnSaveProject">Сохранить</button>
-+              <span id="saveOk" class="ok"></span>
-+            </div>
-+          </div>
-+        </section>
-+      </main>
-     </div>
-   </div>
- 
-   <script src="/admin/admin.js"></script>
- </body>
- </html>
