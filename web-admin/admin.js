@@ -4,6 +4,14 @@ let selectedProjectId = null;
 let selectedChatId = null;
 let pollTimer = null;
 let projectsCache = [];
+let usersCache = [];
+let currentSession = null;
+
+const isAdmin = () => currentSession?.role === "admin";
+
+function projectApiBase(){
+  return isAdmin() ? "/api/admin/projects" : "/api/user/projects";
+}
 
 async function api(path, opts={}){
   const r = await fetch(path, { credentials:"include", ...opts });
@@ -23,23 +31,36 @@ function escapeHtml(s){
 }
 
 function showPage(page){
-  const isSettings = page === "settings";
-  $("#pageChats").style.display = isSettings ? "none" : "block";
-  $("#pageSettings").style.display = isSettings ? "block" : "none";
+  if(page === "chats" && !isAdmin()) page = "settings";
+  const pages = { chats: "#pageChats", settings: "#pageSettings", users: "#pageUsers" };
+  Object.entries(pages).forEach(([key, sel])=>{
+    const el = $(sel);
+    if(el) el.style.display = key === page ? "block" : "none";
+  });
+}
+
+function applyRoleVisibility(){
+  document.querySelectorAll(".adminOnly").forEach(el => {
+    el.style.display = isAdmin() ? "" : "none";
+  });
 }
 
 async function login(){
   $("#loginErr").textContent = "";
   const login = $("#login").value.trim();
   const password = $("#password").value;
-  await api("/api/admin/login", {
+  const session = await api("/api/admin/login", {
     method:"POST",
     headers:{ "Content-Type":"application/json" },
     body: JSON.stringify({ login, password })
   });
+  currentSession = session;
+  applyRoleVisibility();
   $("#loginBox").style.display = "none";
   $("#app").style.display = "flex";
+  showPage(isAdmin() ? "chats" : "settings");
   await refreshProjects(true);
+  if(isAdmin()) await refreshUsers();
 }
 
 async function logout(){
@@ -48,7 +69,7 @@ async function logout(){
 }
 
 async function refreshProjects(autoSelectFirst=false){
-  const j = await api("/api/admin/projects");
+  const j = await api(projectApiBase());
   const items = j.items || [];
   projectsCache = items;
   const sel = $("#projectSelect");
@@ -71,13 +92,13 @@ async function refreshProjects(autoSelectFirst=false){
   }
 
   if(selectedProjectId) await loadProject(selectedProjectId);
-  await refreshChats();
+  if(isAdmin()) await refreshChats();
 }
 
 async function createProject(){
   const name = prompt("Название проекта", "Новый проект")?.trim();
   if(!name) return;
-  const j = await api("/api/admin/projects", {
+  const j = await api(projectApiBase(), {
     method:"POST",
     headers:{ "Content-Type":"application/json" },
     body: JSON.stringify({ name, openai_api_key:"", assistant_id:"", instructions:"", allowed_origins:[] })
@@ -86,11 +107,11 @@ async function createProject(){
   await refreshProjects(false);
   $("#projectSelect").value = selectedProjectId;
   await loadProject(selectedProjectId);
-  await refreshChats();
+  if(isAdmin()) await refreshChats();
 }
 
 async function loadProject(projectId){
-  const j = await api(`/api/admin/projects/${projectId}`);
+  const j = await api(`${projectApiBase()}/${projectId}`);
   const p = j.project;
   selectedProjectId = p.id;
 
@@ -115,7 +136,9 @@ async function saveProject(){
     .map(s => s.trim())
     .filter(Boolean);
 
-  await api(`/api/admin/projects/${selectedProjectId}`, {
+  const url = `${projectApiBase()}/${selectedProjectId}`;
+
+  await api(url, {
     method:"PATCH",
     headers:{ "Content-Type":"application/json" },
     body: JSON.stringify({ openai_api_key, assistant_id, instructions, allowed_origins })
@@ -125,7 +148,22 @@ async function saveProject(){
   setTimeout(()=> $("#saveOk").textContent = "", 1400);
 }
 
+async function deleteProject(){
+  if(!selectedProjectId) return;
+  if(!confirm("Удалить текущий проект? Это действие нельзя отменить.")) return;
+  await api(`${projectApiBase()}/${selectedProjectId}`, { method:"DELETE" });
+  selectedProjectId = null;
+  resetChatView();
+  await refreshProjects(true);
+}
+
 async function refreshChats(){
+  if(!isAdmin()){
+    const box = $("#chatList");
+    if(box) box.innerHTML = `<div class="muted">Работа с чатами доступна только администратору</div>`;
+    resetChatView();
+    return;
+  }
   if(!selectedProjectId) return;
   const mode = $("#filterMode").value;
   const status = $("#filterStatus").value;
@@ -161,6 +199,7 @@ function renderChats(items){
 }
 
 async function openChat(chatId){
+  if(!isAdmin()) return;
   selectedChatId = chatId;
   $("#chatPlaceholder").style.display = "none";
   $("#chatBox").style.display = "block";
@@ -170,6 +209,7 @@ async function openChat(chatId){
 }
 
 async function refreshChatView(){
+  if(!isAdmin()) return;
   if(!selectedChatId) return;
   const items = await api(`/api/admin/chats/${selectedChatId}/messages`);
   renderMessages(items.items || []);
@@ -192,6 +232,7 @@ function renderMessages(items){
 }
 
 function startPolling(){
+  if(!isAdmin()) return;
   if(pollTimer) clearInterval(pollTimer);
   pollTimer = setInterval(async ()=>{
     try{ await refreshChatView(); } catch {}
@@ -199,6 +240,7 @@ function startPolling(){
 }
 
 async function takeover(){
+  if(!isAdmin()) return;
   if(!selectedChatId) return;
   await api(`/api/admin/chats/${selectedChatId}/takeover`, { method:"POST" });
   await refreshChats();
@@ -206,6 +248,7 @@ async function takeover(){
 }
 
 async function release(){
+  if(!isAdmin()) return;
   if(!selectedChatId) return;
   await api(`/api/admin/chats/${selectedChatId}/release`, { method:"POST" });
   await refreshChats();
@@ -213,6 +256,7 @@ async function release(){
 }
 
 async function sendHuman(e){
+  if(!isAdmin()) return;
   e.preventDefault();
   if(!selectedChatId) return;
   const textEl = $("#humanText");
@@ -241,11 +285,59 @@ function resetChatView(){
   $("#chatPlaceholder").style.display = "flex";
 }
 
+async function refreshUsers(){
+  if(!isAdmin()) return;
+  const j = await api("/api/admin/users");
+  usersCache = j.items || [];
+  renderUsers(usersCache);
+}
+
+function renderUsers(items){
+  const box = $("#userList");
+  box.innerHTML = "";
+  if(!items.length){
+    box.innerHTML = `<div class="muted">Пока нет пользователей</div>`;
+    return;
+  }
+
+  for(const u of items){
+    const div = document.createElement("div");
+    div.className = "userRow";
+    div.innerHTML = `
+      <div>
+        <div class="mono">${escapeHtml(u.email)}</div>
+        <div class="muted">Создан: ${new Date(u.created_at).toLocaleString()}</div>
+      </div>
+      <span class="pill">${escapeHtml(u.role)}</span>
+    `;
+    box.appendChild(div);
+  }
+}
+
+async function createUserFromForm(e){
+  if(!isAdmin()) return;
+  e.preventDefault();
+  const email = $("#newUserEmail").value.trim().toLowerCase();
+  const password = $("#newUserPassword").value;
+  if(!email || !password) return;
+
+  await api("/api/admin/users", {
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ email, password })
+  });
+
+  $("#newUserEmail").value = "";
+  $("#newUserPassword").value = "";
+  await refreshUsers();
+}
+
 $("#btnLogin").addEventListener("click", ()=> login().catch(e => $("#loginErr").textContent = "Ошибка входа"));
 $("#btnLogout").addEventListener("click", ()=> logout().catch(()=>{}));
 $("#btnRefreshProjects").addEventListener("click", ()=> refreshProjects(false).catch(()=>{}));
 $("#btnCreateProject").addEventListener("click", ()=> createProject().catch(()=>{}));
 $("#btnSaveProject").addEventListener("click", ()=> saveProject().catch(()=>{}));
+$("#btnDeleteProject").addEventListener("click", ()=> deleteProject().catch(()=>{}));
 $("#btnRefreshChats").addEventListener("click", ()=> refreshChats().catch(()=>{}));
 $("#projectSelect").addEventListener("change", async (e)=>{
   selectedProjectId = e.target.value;
@@ -257,5 +349,8 @@ $("#btnRelease").addEventListener("click", ()=> release().catch(()=>{}));
 $("#humanForm").addEventListener("submit", sendHuman);
 $("#btnOpenSettings").addEventListener("click", ()=> showPage("settings"));
 $("#btnBackToChats").addEventListener("click", ()=> showPage("chats"));
+$("#btnOpenUsers").addEventListener("click", ()=>{ showPage("users"); refreshUsers().catch(()=>{}); });
+$("#userForm").addEventListener("submit", (e)=> createUserFromForm(e).catch(()=>{}));
+$("#btnBackFromUsers").addEventListener("click", ()=> showPage("chats"));
 
 showPage("chats");

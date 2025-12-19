@@ -67,10 +67,15 @@ nano .env
 psql "postgresql://aiwidget:STRONG_PASSWORD@localhost:5432/aiwidget" -f ./sql/001_init.sql
 ```
 
-Если вы обновляете существующую БД со старой версии:
-```sql
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS openai_api_key text NOT NULL DEFAULT '';
+### 1.5.1 Обновление до версии с пользователями и владельцами проектов
+
+Если у вас уже развёрнут проект, примените новый миграционный файл, чтобы добавить таблицу `users` и связь проектов с владельцами:
+
+```bash
+psql "postgresql://aiwidget:STRONG_PASSWORD@localhost:5432/aiwidget" -f ./sql/002_users_and_ownership.sql
 ```
+
+После этого можно входить под администратором (логин `admin`, пароль из `ADMIN_PASSWORD`) и создавать учётные записи пользователей прямо в админке.
 
 ### 1.6 Запуск
 ```bash

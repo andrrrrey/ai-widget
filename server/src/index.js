@@ -5,12 +5,16 @@ import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 
 import { pool } from "./lib/db.js";
-import { requireAdmin, loginHandler, logoutHandler } from "./lib/auth.js";
+import { requireAdmin, requireUser, loginHandler, logoutHandler, hashPassword } from "./lib/auth.js";
 import {
+  createUser,
+  listUsers,
+  findUserByEmail,
   createProject,
   listProjects,
   getProject,
   updateProject,
+  deleteProject,
   createChat,
   getChatById,
   listChats,
@@ -163,6 +167,7 @@ app.post("/api/admin/projects", requireAdmin, async (req, res) => {
   const allowed_origins = Array.isArray(req.body?.allowed_origins)
     ? req.body.allowed_origins.map(String)
     : [];
+  const owner_id = typeof req.body?.owner_id === "string" ? req.body.owner_id : null;
 
   const project = await createProject({
     name,
@@ -170,9 +175,94 @@ app.post("/api/admin/projects", requireAdmin, async (req, res) => {
     openaiApiKey: openai_api_key,
     instructions,
     allowedOrigins: allowed_origins,
+    ownerId: owner_id,
   });
 
   res.json({ project });
+});
+
+app.delete("/api/admin/projects/:projectId", requireAdmin, async (req, res) => {
+  const ok = await deleteProject(req.params.projectId);
+  if (!ok) return res.status(404).json({ error: "project_not_found" });
+  res.json({ ok: true });
+});
+
+// Users management
+app.get("/api/admin/users", requireAdmin, async (req, res) => {
+  const items = await listUsers();
+  res.json({ items });
+});
+
+app.post("/api/admin/users", requireAdmin, async (req, res) => {
+  const email = String(req.body?.email || "").toLowerCase();
+  const password = String(req.body?.password || "").trim();
+  if (!email || !password) return res.status(400).json({ error: "email_and_password_required" });
+  if (await findUserByEmail(email)) return res.status(409).json({ error: "user_exists" });
+
+  const passwordHash = hashPassword(password);
+  const user = await createUser({ email, passwordHash, role: "user" });
+  res.json({ user });
+});
+
+/**
+ * USER API (cookie auth)
+ */
+app.get("/api/user/projects", requireUser, async (req, res) => {
+  const items = await listProjects({ ownerId: req.auth.userId });
+  res.json({ items });
+});
+
+app.post("/api/user/projects", requireUser, async (req, res) => {
+  const name = String(req.body?.name || "New Project");
+  const assistant_id = String(req.body?.assistant_id || "");
+  const openai_api_key = String(req.body?.openai_api_key || "");
+  const instructions = String(req.body?.instructions || "");
+  const allowed_origins = Array.isArray(req.body?.allowed_origins)
+    ? req.body.allowed_origins.map(String)
+    : [];
+
+  const project = await createProject({
+    name,
+    assistantId: assistant_id,
+    openaiApiKey: openai_api_key,
+    instructions,
+    allowedOrigins: allowed_origins,
+    ownerId: req.auth.userId,
+  });
+
+  res.json({ project });
+});
+
+app.get("/api/user/projects/:projectId", requireUser, async (req, res) => {
+  const project = await getProject(req.params.projectId);
+  if (!project || project.owner_id !== req.auth.userId)
+    return res.status(404).json({ error: "project_not_found" });
+  res.json({ project });
+});
+
+app.patch("/api/user/projects/:projectId", requireUser, async (req, res) => {
+  const project = await getProject(req.params.projectId);
+  if (!project || project.owner_id !== req.auth.userId)
+    return res.status(404).json({ error: "project_not_found" });
+
+  const patch = {};
+
+  if (typeof req.body?.name === "string") patch.name = req.body.name;
+  if (typeof req.body?.assistant_id === "string") patch.assistant_id = req.body.assistant_id;
+  if (typeof req.body?.openai_api_key === "string") patch.openai_api_key = req.body.openai_api_key;
+  if (typeof req.body?.instructions === "string") patch.instructions = req.body.instructions;
+  if (Array.isArray(req.body?.allowed_origins)) patch.allowed_origins = req.body.allowed_origins.map(String);
+
+  const updated = await updateProject(req.params.projectId, patch);
+  res.json({ project: updated });
+});
+
+app.delete("/api/user/projects/:projectId", requireUser, async (req, res) => {
+  const project = await getProject(req.params.projectId);
+  if (!project || project.owner_id !== req.auth.userId)
+    return res.status(404).json({ error: "project_not_found" });
+  await deleteProject(req.params.projectId);
+  res.json({ ok: true });
 });
 
 app.get("/api/admin/projects/:projectId", requireAdmin, async (req, res) => {
@@ -192,6 +282,7 @@ app.patch("/api/admin/projects/:projectId", requireAdmin, async (req, res) => {
 
   if (typeof req.body?.instructions === "string") patch.instructions = req.body.instructions;
   if (Array.isArray(req.body?.allowed_origins)) patch.allowed_origins = req.body.allowed_origins.map(String);
+  if (typeof req.body?.owner_id === "string") patch.owner_id = req.body.owner_id;
 
   const project = await updateProject(req.params.projectId, patch);
   if (!project) return res.status(404).json({ error: "project_not_found" });

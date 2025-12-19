@@ -17,7 +17,7 @@
         <input id="login" placeholder="Логин" value="admin"/>
         <input id="password" placeholder="Пароль" type="password"/>
         <button id="btnLogin">Войти</button>
-        <div class="muted">Пароль берётся из переменной окружения <b>ADMIN_PASSWORD</b>.</div>
+        <div class="muted">Для администратора пароль берётся из переменной окружения <b>ADMIN_PASSWORD</b>. Пользователи входят по созданным email и паролю.</div>
         <div id="loginErr" class="err"></div>
       </div>
     </div>
@@ -37,7 +37,7 @@
           <select id="projectSelect"></select>
         </div>
 
-        <div class="topbarSection">
+        <div class="topbarSection adminOnly">
           <div class="labelRow">
             <label>Фильтр чатов</label>
             <button id="btnRefreshChats" class="icon ghost" title="Обновить">⟳</button>
@@ -57,6 +57,7 @@
         </div>
 
         <div class="topbarActions">
+          <button id="btnOpenUsers" class="ghost adminOnly">Пользователи</button>
           <button id="btnOpenSettings" class="ghost">Настройки проекта</button>
           <button id="btnLogout" class="ghost text">Выйти</button>
         </div>
@@ -153,8 +154,41 @@
 
             <div class="row">
               <button id="btnSaveProject">Сохранить</button>
+              <button id="btnDeleteProject" class="ghost">Удалить проект</button>
               <span id="saveOk" class="ok"></span>
             </div>
+          </div>
+        </section>
+
+        <section id="pageUsers" class="page adminOnly" style="display:none">
+          <div class="pageHead">
+            <div>
+              <p class="eyebrow">Пользователи</p>
+              <h2>Создание и просмотр пользователей</h2>
+              <p class="muted">Администратор может добавлять аккаунты для работы в системе.</p>
+            </div>
+            <div class="row">
+              <button id="btnBackFromUsers" class="ghost">← Назад</button>
+            </div>
+          </div>
+
+          <div class="card" style="display:flex;flex-direction:column;gap:12px">
+            <form id="userForm" class="formGrid" style="align-items:flex-end">
+              <div>
+                <label class="muted">Email пользователя</label>
+                <input id="newUserEmail" placeholder="user@example.com" type="email" required />
+              </div>
+              <div>
+                <label class="muted">Пароль</label>
+                <input id="newUserPassword" placeholder="Пароль" type="password" required />
+              </div>
+              <div>
+                <label class="muted">&nbsp;</label>
+                <button type="submit" class="primary full">Создать</button>
+              </div>
+            </form>
+
+            <div id="userList" class="list"></div>
           </div>
         </section>
       </main>

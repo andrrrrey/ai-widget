@@ -2,11 +2,28 @@ import { sql } from "./db.js";
 import { v4 as uuidv4 } from "uuid";
 import { ensureThread } from "./openai.js";
 
-export async function createProject({ name, assistantId, openaiApiKey, instructions, allowedOrigins }) {
+export async function createUser({ email, passwordHash, role = "user" }) {
+  const row = await sql.one(
+    `INSERT INTO users (id, email, password_hash, role)
+     VALUES ($1,$2,$3,$4) RETURNING id, email, role, created_at`,
+    [uuidv4(), email, passwordHash, role]
+  );
+  return row;
+}
+
+export async function findUserByEmail(email) {
+  return await sql.oneOrNone(`SELECT * FROM users WHERE email=$1`, [email]);
+}
+
+export async function listUsers() {
+  return await sql.many(`SELECT id, email, role, created_at FROM users ORDER BY created_at DESC`);
+}
+
+export async function createProject({ name, assistantId, openaiApiKey, instructions, allowedOrigins, ownerId = null }) {
   const id = uuidv4();
   const row = await sql.one(
-    `INSERT INTO projects (id, name, assistant_id, openai_api_key, instructions, allowed_origins)
-     VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+    `INSERT INTO projects (id, name, assistant_id, openai_api_key, instructions, allowed_origins, owner_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
     [
       id,
       name || "New Project",
@@ -14,12 +31,16 @@ export async function createProject({ name, assistantId, openaiApiKey, instructi
       openaiApiKey || "",
       instructions || "",
       Array.isArray(allowedOrigins) ? allowedOrigins : [],
+      ownerId || null,
     ]
   );
   return row;
 }
 
-export async function listProjects() {
+export async function listProjects({ ownerId = null } = {}) {
+  if (ownerId) {
+    return await sql.many("SELECT * FROM projects WHERE owner_id=$1 ORDER BY created_at DESC", [ownerId]);
+  }
   return await sql.many("SELECT * FROM projects ORDER BY created_at DESC");
 }
 
@@ -36,13 +57,21 @@ export async function updateProject(projectId, patch) {
   const openaiApiKey = patch.openai_api_key ?? p.openai_api_key;
   const instructions = patch.instructions ?? p.instructions;
   const allowedOrigins = patch.allowed_origins ?? p.allowed_origins;
+  const ownerId = patch.owner_id ?? p.owner_id;
 
   return await sql.one(
     `UPDATE projects
-     SET name=$2, assistant_id=$3, openai_api_key=$4, instructions=$5, allowed_origins=$6, updated_at=NOW()
+     SET name=$2, assistant_id=$3, openai_api_key=$4, instructions=$5, allowed_origins=$6, owner_id=$7, updated_at=NOW()
      WHERE id=$1 RETURNING *`,
-    [projectId, name, assistantId, openaiApiKey, instructions, allowedOrigins]
+    [projectId, name, assistantId, openaiApiKey, instructions, allowedOrigins, ownerId]
   );
+}
+
+export async function deleteProject(projectId) {
+  const existing = await getProject(projectId);
+  if (!existing) return false;
+  await sql.exec("DELETE FROM projects WHERE id=$1", [projectId]);
+  return true;
 }
 
 export async function createChat({ projectId, visitorId, openaiApiKey }) {
