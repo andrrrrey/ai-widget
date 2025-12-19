@@ -4,7 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 
-import { pool } from "./lib/db.js";
+import { ensureSchema, pool } from "./lib/db.js";
 import { requireAdmin, requireUser, loginHandler, logoutHandler, hashPassword } from "./lib/auth.js";
 import {
   createUser,
@@ -338,6 +338,7 @@ app.use((req, res) => res.status(404).json({ error: "not_found" }));
 
 const port = Number(process.env.PORT || 3000);
 app.listen(port, async () => {
+  await ensureSchema();
   await pool.query("SELECT 1");
   console.log(`[ai-widget] listening on :${port}`);
 });

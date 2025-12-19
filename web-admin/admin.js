@@ -317,19 +317,37 @@ function renderUsers(items){
 async function createUserFromForm(e){
   if(!isAdmin()) return;
   e.preventDefault();
+  $("#userErr").textContent = "";
+  $("#userOk").textContent = "";
   const email = $("#newUserEmail").value.trim().toLowerCase();
   const password = $("#newUserPassword").value;
-  if(!email || !password) return;
+  if(!email || !password){
+    $("#userErr").textContent = "Укажите email и пароль";
+    return;
+  }
 
-  await api("/api/admin/users", {
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({ email, password })
-  });
+  try{
+    await api("/api/admin/users", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ email, password })
+    });
 
-  $("#newUserEmail").value = "";
-  $("#newUserPassword").value = "";
-  await refreshUsers();
+    $("#newUserEmail").value = "";
+    $("#newUserPassword").value = "";
+    $("#userOk").textContent = "Пользователь создан";
+    await refreshUsers();
+    setTimeout(()=> $("#userOk").textContent = "", 2000);
+  } catch(err){
+    const code = err?.data?.error || err?.message || "api_error";
+    if(code === "user_exists"){
+      $("#userErr").textContent = "Такой пользователь уже существует";
+    } else if(code === "email_and_password_required"){
+      $("#userErr").textContent = "Нужно указать email и пароль";
+    } else {
+      $("#userErr").textContent = "Не удалось создать пользователя. Попробуйте ещё раз.";
+    }
+  }
 }
 
 $("#btnLogin").addEventListener("click", ()=> login().catch(e => $("#loginErr").textContent = "Ошибка входа"));
