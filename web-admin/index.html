@@ -23,13 +23,13 @@
     </div>
 
     <div id="app" class="appShell" style="display:none">
-      <aside class="sidebar">
+      <header class="topbar card">
         <div class="logoRow">
           <div class="logo">AI Widget</div>
           <button id="btnCreateProject" class="primary">+ Новый проект</button>
         </div>
 
-        <div class="section">
+        <div class="topbarSection">
           <div class="labelRow">
             <label for="projectSelect">Проекты</label>
             <button id="btnRefreshProjects" class="icon ghost" title="Обновить">⟳</button>
@@ -37,7 +37,7 @@
           <select id="projectSelect"></select>
         </div>
 
-        <div class="section">
+        <div class="topbarSection">
           <div class="labelRow">
             <label>Фильтр чатов</label>
             <button id="btnRefreshChats" class="icon ghost" title="Обновить">⟳</button>
@@ -56,11 +56,11 @@
           </div>
         </div>
 
-        <div class="sidebarFooter">
-          <button id="btnOpenSettings" class="ghost full">Настройки проекта</button>
+        <div class="topbarActions">
+          <button id="btnOpenSettings" class="ghost">Настройки проекта</button>
           <button id="btnLogout" class="ghost text">Выйти</button>
         </div>
-      </aside>
+      </header>
 
       <main class="content">
         <section id="pageChats" class="page">
@@ -108,7 +108,7 @@
               <div class="empty">
                 <p class="eyebrow">Нет выбранного чата</p>
                 <h3>Выберите чат слева, чтобы открыть переписку</h3>
-                <p class="muted">Чаты обновляются в реальном времени. Используйте фильтры в панели слева.</p>
+                <p class="muted">Чаты обновляются в реальном времени. Используйте фильтры в панели сверху.</p>
               </div>
             </div>
           </div>

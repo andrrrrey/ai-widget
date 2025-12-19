@@ -38,7 +38,7 @@ async function login(){
     body: JSON.stringify({ login, password })
   });
   $("#loginBox").style.display = "none";
-  $("#app").style.display = "grid";
+  $("#app").style.display = "flex";
   await refreshProjects(true);
 }
 

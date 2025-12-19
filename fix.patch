@@ -1,284 +1,313 @@
-diff --git a/widget/widget.css b/widget/widget.css
-index b554318d466f18bdef356d4c95ed991071ecd801..53e76e879f57a95a64b0bdfba2f6a3fa092aaebf 100644
---- a/widget/widget.css
-+++ b/widget/widget.css
-@@ -104,50 +104,51 @@
- 
- .aiw-hero{
-   display:flex;
-   flex-direction:column;
-   align-items:center;
-   justify-content:flex-start;
-   gap: 14px;
-   padding-top: 48px;
-   flex: 0 0 auto;
-   pointer-events:none;
+diff --git a/web-admin/admin.css b/web-admin/admin.css
+index f244c02dc3acdcd659ee943f4c5e3b9b4c85d11a..809366e0927c40d7cbfc94dc6fdb18c7e8b4d354 100644
+--- a/web-admin/admin.css
++++ b/web-admin/admin.css
+@@ -1,95 +1,96 @@
+ :root{
+   --bg:#f5f7fb;
+   --panel:#ffffff;
+   --text:#1f2937;
+   --muted:#6b7280;
+   --accent:#5d5af6;
+   --bad:#e11d48;
+   --good:#16a34a;
+   --border:#e5e7eb;
+   --shadow:0 12px 40px rgba(17,24,39,0.08);
  }
  
- .aiw-sparkle{ width:40px;height:40px;color:#0f0f10;opacity:.95; }
- .aiw-title{ font-size: clamp(22px, 2.2vw, 34px); font-weight: 500; letter-spacing:.2px; }
+ *{box-sizing:border-box}
+ body{margin:0;background:var(--bg);color:var(--text);font-family:"Inter",ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,Arial}
  
- .aiw-chat{
-   flex: 1 1 auto;
-   min-height: 0;
-   display:flex;
-   flex-direction:column;
-   justify-content:flex-end;
-   gap: 18px;
-   padding: 10px 0 6px;
-   overflow-y:auto;
-   overflow-x:hidden;
-+  scroll-behavior: smooth;
-   scrollbar-width: none;
+-.wrap{max-width:1280px;margin:28px auto;padding:0 16px}
++.wrap{max-width:1440px;margin:28px auto;padding:0 16px}
+ 
+ h1{font-size:26px;margin:0 0 6px 0}
+ h2{font-size:22px;margin:0}
+ h3{margin:0;font-size:17px}
+ 
+ .card{background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:18px;box-shadow:var(--shadow)}
+ 
+ .loginCard{display:flex;justify-content:space-between;align-items:flex-start;gap:32px;max-width:720px;margin:0 auto}
+ .loginForm{display:flex;flex-direction:column;gap:12px;width:320px}
+ 
+-.appShell{display:grid;grid-template-columns:320px 1fr;gap:20px;align-items:start}
+-.sidebar{background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:16px;box-shadow:var(--shadow);min-height:80vh}
++.appShell{display:flex;flex-direction:column;gap:18px}
+ .logoRow{display:flex;justify-content:space-between;align-items:center}
+ .logo{font-weight:800;font-size:18px}
+ .section{display:flex;flex-direction:column;gap:10px}
+ .labelRow{display:flex;justify-content:space-between;align-items:center;font-weight:600;font-size:14px}
+-.sidebarFooter{margin-top:auto;display:flex;flex-direction:column;gap:8px}
++.topbar{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end}
++.topbarSection{min-width:260px;flex:1;display:flex;flex-direction:column;gap:8px}
++.topbarActions{display:flex;gap:10px;margin-left:auto}
+ 
+ .content{display:flex;flex-direction:column;gap:18px}
+ .page{background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:22px;box-shadow:var(--shadow)}
+ .pageHead{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+ .eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin:0 0 6px 0;font-weight:700}
+ 
+-.chatLayout{display:grid;grid-template-columns:340px 1fr;gap:16px;align-items:start}
++.chatLayout{display:grid;grid-template-columns:420px 1fr;gap:20px;align-items:start}
+ .chatListCard{background:linear-gradient(135deg,rgba(93,90,246,0.08),rgba(93,90,246,0.02));border:1px solid var(--border);border-radius:18px;padding:16px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px}
+ .listHead{display:flex;justify-content:space-between;align-items:center}
+ .placeholder{height:100%;display:flex;align-items:center;justify-content:center}
+ .empty{text-align:center;padding:40px;background:rgba(93,90,246,0.04);border:1px dashed var(--border);border-radius:16px}
+ 
+ .row{display:flex;gap:10px;align-items:center}
+ .row.tight select{flex:1}
+ 
+ .muted{color:var(--muted);font-size:13px;margin:0}
+ .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;overflow-wrap:anywhere}
+ 
+ input,textarea,select{width:100%;border-radius:12px;border:1px solid var(--border);background:#f9fafb;color:var(--text);padding:10px 12px;font-size:14px;outline:none;transition:border-color .2s,box-shadow .2s}
+ input:focus,textarea:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(93,90,246,0.15);background:white}
+ textarea{resize:vertical}
+ 
+ button{border-radius:12px;border:1px solid transparent;background:var(--accent);color:white;padding:10px 14px;font-weight:700;cursor:pointer;transition:transform .1s ease,box-shadow .2s,background .2s}
+ button:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(93,90,246,0.25)}
+ button:active{transform:translateY(0)}
+ button.ghost{background:transparent;color:var(--text);border-color:var(--border);box-shadow:none}
+ button.ghost:hover{background:#eef2ff}
+ button.icon{padding:8px 10px}
+ button.text{color:var(--muted);border-color:transparent}
+ button.primary{background:linear-gradient(135deg,#5d5af6,#7c5dfa);color:white}
+ button.full{width:100%}
+ 
+ .list{display:flex;flex-direction:column;gap:10px;max-height:620px;overflow:auto;padding-right:6px}
+ .item{padding:12px;border:1px solid var(--border);border-radius:14px;cursor:pointer;background:white;transition:border-color .2s,transform .1s}
+ .item:hover{border-color:var(--accent);transform:translateY(-1px)}
+ .pill{display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;border:1px solid var(--border);font-size:12px;color:var(--muted);gap:6px}
+ 
+ .msgs{max-height:620px;overflow:auto;border:1px solid var(--border);border-radius:14px;padding:12px;background:#f8fafc;display:flex;flex-direction:column;gap:10px}
+ .msg{display:flex}
+ .msg.user{justify-content:flex-end}
+ .msg.assistant,.msg.human{justify-content:flex-start}
+ .bubble{max-width:78%;padding:12px 14px;border-radius:14px;white-space:pre-wrap;word-break:break-word;font-size:14px;line-height:1.35;box-shadow:var(--shadow);background:white}
+ .msg.user .bubble{background:#5d5af6;color:white;box-shadow:none;border-bottom-right-radius:6px}
+ .msg.assistant .bubble{background:white;border:1px solid var(--border);border-bottom-left-radius:6px}
+ .msg.human .bubble{background:rgba(93,90,246,0.12);border:1px solid rgba(93,90,246,0.35);border-bottom-left-radius:6px}
+ 
+ .err{color:var(--bad);margin-top:4px;font-size:13px}
+ .ok{color:var(--good);font-size:13px}
+ 
+ .settingsCard{display:flex;flex-direction:column;gap:16px}
+ .formGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+ 
+ @media (max-width:1180px){
+-  .appShell{grid-template-columns:1fr}
+-  .sidebar{min-height:auto}
++  .topbar{flex-direction:column;align-items:stretch}
++  .topbarActions{margin-left:0}
  }
  
- .aiw-chat::-webkit-scrollbar{width:0;height:0}
- 
- .aiw-msg{ display:flex; flex-direction:column; gap: 8px; max-width: 774px; }
- .aiw-msg.aiw-left{ align-self:flex-start; }
- .aiw-msg.aiw-right{ align-self:flex-end; }
- 
- .aiw-label{ font-size: 12px; letter-spacing: .08em; color: var(--aiw-muted); padding: 0 10px; }
- 
- .aiw-bubble{
-   background: var(--aiw-bubble-bg);
-   border: 1px solid var(--aiw-bubble-border);
-   border-radius: 12px;
-   padding: 14px 16px;
-   backdrop-filter: blur(10px);
-   -webkit-backdrop-filter: blur(10px);
-   width: fit-content;
-   max-width: 648px;
+ @media (max-width:980px){
+   .chatLayout{grid-template-columns:1fr}
+   .chatBox{order:2}
+   .chatListCard{order:1}
+ }
+diff --git a/web-admin/admin.js b/web-admin/admin.js
+index c5d19211e11c871d4c5617513f030363b2f877e9..23696b1755b161211daa746e1831999ed08fd9e4 100644
+--- a/web-admin/admin.js
++++ b/web-admin/admin.js
+@@ -16,51 +16,51 @@ async function api(path, opts={}){
+ function escapeHtml(s){
+   return String(s)
+     .replaceAll("&","&amp;")
+     .replaceAll("<","&lt;")
+     .replaceAll(">","&gt;")
+     .replaceAll('"',"&quot;")
+     .replaceAll("'","&#039;");
  }
  
- .aiw-msg.aiw-left .aiw-bubble{ border-top-left-radius: 8px; }
- .aiw-msg.aiw-right .aiw-bubble{ border-top-right-radius: 8px; }
+ function showPage(page){
+   const isSettings = page === "settings";
+   $("#pageChats").style.display = isSettings ? "none" : "block";
+   $("#pageSettings").style.display = isSettings ? "block" : "none";
+ }
  
-diff --git a/widget/widget.js b/widget/widget.js
-index 9e09f996eb91d06a2f8ffc689adf5394e191a22f..00615d068acc889a323180f9ccc72b4ddfd4477d 100644
---- a/widget/widget.js
-+++ b/widget/widget.js
-@@ -57,94 +57,126 @@
+ async function login(){
+   $("#loginErr").textContent = "";
+   const login = $("#login").value.trim();
+   const password = $("#password").value;
+   await api("/api/admin/login", {
+     method:"POST",
+     headers:{ "Content-Type":"application/json" },
+     body: JSON.stringify({ login, password })
+   });
+   $("#loginBox").style.display = "none";
+-  $("#app").style.display = "grid";
++  $("#app").style.display = "flex";
+   await refreshProjects(true);
+ }
  
-       <div class="aiw-composerWrap">
-         <form class="aiw-composer" id="aiw-form" role="group" aria-label="Message composer">
-           <input class="aiw-input" id="aiw-input" placeholder="Ask me anything about your projects" autocomplete="off"/>
-           <button class="aiw-send" type="submit" aria-label="Send">
-             <svg viewBox="0 0 24 24" fill="none" stroke="rgba(130,140,155,.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-               <path d="M22 2L11 13" />
-               <path d="M22 2L15 22l-4-9-9-4 20-7z" />
-             </svg>
-           </button>
-         </form>
+ async function logout(){
+   await api("/api/admin/logout", { method:"POST" });
+   location.reload();
+ }
+ 
+ async function refreshProjects(autoSelectFirst=false){
+   const j = await api("/api/admin/projects");
+   const items = j.items || [];
+   projectsCache = items;
+   const sel = $("#projectSelect");
+   sel.innerHTML = "";
+   for(const p of items){
+     const opt = document.createElement("option");
+     opt.value = p.id;
+     opt.textContent = p.name;
+     sel.appendChild(opt);
+   }
+ 
+   if(autoSelectFirst && items[0]){
+     selectedProjectId = items[0].id;
+     sel.value = selectedProjectId;
+   } else if(selectedProjectId){
+diff --git a/web-admin/index.html b/web-admin/index.html
+index 5cc15cca30adc1a6e6bc7abdd8f9379bae6bea51..965d51208b761422a75be1f82987a49e6a448479 100644
+--- a/web-admin/index.html
++++ b/web-admin/index.html
+@@ -1,136 +1,136 @@
+ <!doctype html>
+ <html lang="ru">
+ <head>
+   <meta charset="utf-8"/>
+   <meta name="viewport" content="width=device-width, initial-scale=1"/>
+   <title>Admin — AI Widget</title>
+   <link rel="stylesheet" href="/admin/admin.css"/>
+ </head>
+ <body>
+   <div class="wrap">
+     <div id="loginBox" class="card loginCard">
+       <div>
+         <h1>AI Widget — Админка</h1>
+         <p class="muted">Управление проектами и чатами в едином интерфейсе.</p>
+       </div>
+       <div class="loginForm">
+         <input id="login" placeholder="Логин" value="admin"/>
+         <input id="password" placeholder="Пароль" type="password"/>
+         <button id="btnLogin">Войти</button>
+         <div class="muted">Пароль берётся из переменной окружения <b>ADMIN_PASSWORD</b>.</div>
+         <div id="loginErr" class="err"></div>
        </div>
      </div>
-   `;
  
-   document.body.appendChild(btn);
-   document.body.appendChild(overlay);
-   document.body.appendChild(overlayClose);
-   document.body.appendChild(panel);
+     <div id="app" class="appShell" style="display:none">
+-      <aside class="sidebar">
++      <header class="topbar card">
+         <div class="logoRow">
+           <div class="logo">AI Widget</div>
+           <button id="btnCreateProject" class="primary">+ Новый проект</button>
+         </div>
  
-   const form = panel.querySelector("#aiw-form");
-   const input = panel.querySelector("#aiw-input");
-   const msgs = panel.querySelector("#aiw-msgs");
-   const statusEl = panel.querySelector("#aiw-status");
+-        <div class="section">
++        <div class="topbarSection">
+           <div class="labelRow">
+             <label for="projectSelect">Проекты</label>
+             <button id="btnRefreshProjects" class="icon ghost" title="Обновить">⟳</button>
+           </div>
+           <select id="projectSelect"></select>
+         </div>
  
-+  let renderedCount = 0;
-+  let shouldAutoScroll = true;
-+
-   function setStatus(text) {
-     statusEl.textContent = text || "";
-   }
+-        <div class="section">
++        <div class="topbarSection">
+           <div class="labelRow">
+             <label>Фильтр чатов</label>
+             <button id="btnRefreshChats" class="icon ghost" title="Обновить">⟳</button>
+           </div>
+           <div class="row tight">
+             <select id="filterMode">
+               <option value="">Все режимы</option>
+               <option value="assistant">assistant</option>
+               <option value="human">human</option>
+             </select>
+             <select id="filterStatus">
+               <option value="">Все статусы</option>
+               <option value="open">open</option>
+               <option value="closed">closed</option>
+             </select>
+           </div>
+         </div>
  
--  function append(role, text) {
-+  function isAtBottom() {
-+    const threshold = 24;
-+    return msgs.scrollHeight - msgs.scrollTop - msgs.clientHeight <= threshold;
-+  }
-+
-+  function scrollToBottom(useSmooth = true) {
-+    msgs.scrollTo({ top: msgs.scrollHeight, behavior: useSmooth ? "smooth" : "auto" });
-+  }
-+
-+  function append(role, text, opts = {}) {
-+    const stickToBottom = opts.forceScroll || shouldAutoScroll;
-     const item = document.createElement("div");
-     const isUser = role === "user";
-     item.className = "aiw-msg " + (isUser ? "aiw-right" : "aiw-left");
+-        <div class="sidebarFooter">
+-          <button id="btnOpenSettings" class="ghost full">Настройки проекта</button>
++        <div class="topbarActions">
++          <button id="btnOpenSettings" class="ghost">Настройки проекта</button>
+           <button id="btnLogout" class="ghost text">Выйти</button>
+         </div>
+-      </aside>
++      </header>
  
-     const label = document.createElement("div");
-     label.className = "aiw-label";
-     label.textContent = isUser ? "ME" : role === "human" ? "OPERATOR" : "OUR AI";
+       <main class="content">
+         <section id="pageChats" class="page">
+           <div class="pageHead">
+             <div>
+               <p class="eyebrow">Работа с чатами</p>
+               <h2>Чаты из виджета</h2>
+               <p class="muted">Следите за диалогами пользователей и подключайтесь при необходимости.</p>
+             </div>
+           </div>
  
-     const bubble = document.createElement("div");
-     bubble.className = "aiw-bubble";
-     const p = document.createElement("p");
-     p.textContent = text;
-     bubble.appendChild(p);
+           <div class="chatLayout">
+             <div class="chatListCard">
+               <div class="listHead">
+                 <h3>Чаты проекта</h3>
+                 <span id="projectBadge" class="pill muted"></span>
+               </div>
+               <div id="chatList" class="list"></div>
+             </div>
  
-     item.appendChild(label);
-     item.appendChild(bubble);
+             <div class="chatBox card" id="chatBox" style="display:none">
+               <div class="cardHead">
+                 <div>
+                   <p class="eyebrow">Активный чат</p>
+                   <h3 class="mono" id="chatId"></h3>
+                 </div>
+                 <div class="row">
+                   <span class="pill" id="chatMode"></span>
+                   <button id="btnRelease" class="ghost">Release</button>
+                 </div>
+               </div>
  
-     msgs.appendChild(item);
--    msgs.scrollTop = msgs.scrollHeight;
-+    renderedCount++;
-+    if (stickToBottom) scrollToBottom(true);
-     return p;
-   }
+               <div id="messages" class="msgs"></div>
  
-   async function ensureChat() {
-     if (chatId) return chatId;
-     const r = await fetch(`${BASE}/api/widget/${projectId}/chat/start`, {
-       method: "POST",
-       headers: { "Content-Type": "application/json" },
-       body: JSON.stringify({ visitorId }),
-     });
-     const j = await r.json();
-     if (!r.ok) throw new Error(j?.error || "start_failed");
-     chatId = j.chatId;
-     return chatId;
-   }
+               <form id="humanForm" class="row" style="margin-top:10px">
+                 <input id="humanText" placeholder="Ответить как оператор..." />
+                 <button type="submit">Отправить</button>
+               </form>
+               <div class="muted" style="margin-top:8px">
+                 Human-ответ сохраняется и синхронизируется в OpenAI thread как <b>[OPERATOR] ...</b>
+               </div>
+             </div>
  
-   function renderMessages(items) {
--    msgs.innerHTML = "";
--    items.forEach((item) => append(item.role, item.content));
--    msgs.scrollTop = msgs.scrollHeight;
-+    const wasAtBottom = isAtBottom();
-+
-+    if (msgs.children.length > items.length) {
-+      msgs.innerHTML = "";
-+      renderedCount = 0;
-+    }
-+
-+    items.forEach((item, idx) => {
-+      const existing = msgs.children[idx];
-+      if (existing) {
-+        const bubbleText = existing.querySelector(".aiw-bubble p");
-+        if (bubbleText && bubbleText.textContent !== item.content) {
-+          bubbleText.textContent = item.content;
-+        }
-+      } else {
-+        append(item.role, item.content, { forceScroll: wasAtBottom });
-+      }
-+    });
-+
-+    renderedCount = items.length;
-+    if (wasAtBottom) scrollToBottom(true);
-   }
+             <div class="placeholder" id="chatPlaceholder">
+               <div class="empty">
+                 <p class="eyebrow">Нет выбранного чата</p>
+                 <h3>Выберите чат слева, чтобы открыть переписку</h3>
+-                <p class="muted">Чаты обновляются в реальном времени. Используйте фильтры в панели слева.</p>
++                <p class="muted">Чаты обновляются в реальном времени. Используйте фильтры в панели сверху.</p>
+               </div>
+             </div>
+           </div>
+         </section>
  
-   let pollTimer = null;
-   let pollInFlight = false;
+         <section id="pageSettings" class="page" style="display:none">
+           <div class="pageHead">
+             <div>
+               <p class="eyebrow">Настройки</p>
+               <h2>Настройки проекта</h2>
+               <p class="muted">Изменяйте ключи OpenAI, разрешённые домены и инструкции ассистента.</p>
+             </div>
+             <div class="row">
+               <button id="btnBackToChats" class="ghost">← Назад к чатам</button>
+             </div>
+           </div>
  
-   async function syncMessages() {
-     if (!chatId || pollInFlight) return;
-     pollInFlight = true;
-     try {
-       const r = await fetch(`${BASE}/api/widget/${projectId}/chat/${chatId}/messages`);
-       if (!r.ok) throw new Error("messages_failed");
-       const j = await r.json();
-       if (Array.isArray(j.items)) renderMessages(j.items);
-     } catch (e) {
-       console.warn("syncMessages failed", e);
-     } finally {
-       pollInFlight = false;
-     }
-   }
+           <div class="settingsCard card">
+             <div class="muted">Project ID (вставляется в data-project-id):</div>
+             <div class="mono" id="projectId"></div>
  
-   function startPollingMessages() {
-     if (pollTimer) return;
-     pollTimer = setInterval(syncMessages, 2000);
-   }
- 
-@@ -156,51 +188,51 @@
- 
-   async function sendMessage(text) {
-     await ensureChat();
- 
-     append("user", text);
-     input.value = "";
-     input.focus();
- 
-     setStatus("Печатает…");
- 
-     // Stream assistant via SSE
-     const url = `${BASE}/api/widget/${projectId}/chat/${chatId}/stream?message=${encodeURIComponent(text)}`;
-     const es = new EventSource(url, { withCredentials: true });
- 
-     let assistantText = null;
-     let acc = "";
- 
-     es.addEventListener("token", (e) => {
-       const data = JSON.parse(e.data);
-       const t = data.t || "";
-       if (!assistantText) {
-         assistantText = append("assistant", "");
-       }
-       acc += t;
-       assistantText.textContent = acc;
--      msgs.scrollTop = msgs.scrollHeight;
-+      if (shouldAutoScroll) scrollToBottom(true);
-     });
- 
-     es.addEventListener("waiting_for_human", () => {
-       setStatus("Оператор подключился. Подождите, пожалуйста…");
-       startPollingMessages();
-     });
- 
-     es.addEventListener("error", (e) => {
-       try {
-         const data = JSON.parse(e.data);
-         setStatus("Ошибка: " + (data.message || "unknown"));
-       } catch {
-         setStatus("Ошибка");
-       }
-       es.close();
-     });
- 
-     es.addEventListener("done", () => {
-       setStatus("");
-       es.close();
-     });
-   }
- 
-   async function openPanel() {
-     isOpen = true;
-@@ -227,34 +259,38 @@
-     setTimeout(() => btn.classList.remove("aiw-hide"), 200);
-   }
- 
-   btn.addEventListener("click", async () => {
-     if (isOpen) {
-       closePanel();
-     } else {
-       await openPanel();
-     }
-   });
- 
-   overlayClose.addEventListener("click", closePanel);
- 
-   form.addEventListener("submit", async (e) => {
-     e.preventDefault();
-     const text = String(input.value || "").trim();
-     if (!text) return;
-     try {
-       await sendMessage(text);
-     } catch (err) {
-       console.error(err);
-       setStatus("Не удалось отправить сообщение");
-     }
-   });
- 
-+  msgs.addEventListener("scroll", () => {
-+    shouldAutoScroll = isAtBottom();
-+  });
-+
-   function escapeHtml(s) {
-     return String(s)
-       .replaceAll("&", "&amp;")
-       .replaceAll("<", "&lt;")
-       .replaceAll(">", "&gt;")
-       .replaceAll('"', "&quot;")
-       .replaceAll("'", "&#039;");
-   }
- })();
+             <div class="formGrid">
+               <div>
+                 <label class="muted">OpenAI API key (клиента)</label>
+                 <input id="apiKey" placeholder="sk-..."/>
