@@ -219,6 +219,13 @@ async function sendHuman(e){
   const text = textEl.value.trim();
   if(!text) return;
 
+  try {
+    await takeover();
+  } catch (err) {
+    console.warn("takeover failed", err);
+    return;
+  }
+  
   await api(`/api/admin/chats/${selectedChatId}/message`, {
     method:"POST",
     headers:{ "Content-Type":"application/json" },
@@ -246,7 +253,6 @@ $("#projectSelect").addEventListener("change", async (e)=>{
   await loadProject(selectedProjectId);
   await refreshChats();
 });
-$("#btnTakeover").addEventListener("click", ()=> takeover().catch(()=>{}));
 $("#btnRelease").addEventListener("click", ()=> release().catch(()=>{}));
 $("#humanForm").addEventListener("submit", sendHuman);
 $("#btnOpenSettings").addEventListener("click", ()=> showPage("settings"));

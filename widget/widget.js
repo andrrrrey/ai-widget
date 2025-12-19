@@ -211,6 +211,7 @@
     try {
       await ensureChat();
       await syncMessages();
+      startPollingMessages();
     } catch (e) {
       console.error(e);
     }
