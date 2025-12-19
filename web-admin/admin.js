@@ -43,7 +43,6 @@ function escapeHtml(s){
 }
 
 function showPage(page){
-  if(page === "chats" && !isAdmin()) page = "settings";
   const pages = { chats: "#pageChats", settings: "#pageSettings", users: "#pageUsers" };
   Object.entries(pages).forEach(([key, sel])=>{
     const el = $(sel);
@@ -55,6 +54,12 @@ function applyRoleVisibility(){
   document.querySelectorAll(".adminOnly").forEach(el => {
     el.style.display = isAdmin() ? "" : "none";
   });
+
+  const humanForm = $("#humanForm");
+  if(humanForm) humanForm.style.display = isAdmin() ? "flex" : "none";
+
+  const releaseBtn = $("#btnRelease");
+  if(releaseBtn) releaseBtn.style.display = isAdmin() ? "" : "none";
 }
 
 async function login(){
@@ -70,7 +75,7 @@ async function login(){
   applyRoleVisibility();
   $("#loginBox").style.display = "none";
   $("#app").style.display = "flex";
-  showPage(isAdmin() ? "chats" : "settings");
+  showPage("chats");
   await refreshProjects(true);
   if(isAdmin()) await refreshUsers();
 }
@@ -104,7 +109,7 @@ async function refreshProjects(autoSelectFirst=false){
   }
 
   if(selectedProjectId) await loadProject(selectedProjectId);
-  if(isAdmin()) await refreshChats();
+  await refreshChats();
 }
 
 async function createProject(){
@@ -175,12 +180,6 @@ async function deleteProject(){
 }
 
 async function refreshChats(){
-  if(!isAdmin()){
-    const box = $("#chatList");
-    if(box) box.innerHTML = `<div class="muted">Работа с чатами доступна только администратору</div>`;
-    resetChatView();
-    return;
-  }
   if(!selectedProjectId) return;
   const mode = $("#filterMode").value;
   const status = $("#filterStatus").value;
@@ -188,7 +187,10 @@ async function refreshChats(){
   if(mode) qs.set("mode", mode);
   if(status) qs.set("status", status);
 
-  const j = await api(`/api/admin/projects/${selectedProjectId}/chats?${qs.toString()}`);
+  const base = isAdmin()
+    ? `/api/admin/projects/${selectedProjectId}/chats`
+    : `/api/user/projects/${selectedProjectId}/chats`;
+  const j = await api(`${base}?${qs.toString()}`);
   renderChats(j.items || []);
 }
 
@@ -220,7 +222,6 @@ function renderChats(items){
 }
 
 async function openChat(chat){
-  if(!isAdmin()) return;
   const chatId = typeof chat === "string" ? chat : chat?.id;
   if(!chatId) return;
   selectedChatId = chatId;
@@ -233,12 +234,17 @@ async function openChat(chat){
 }
 
 async function refreshChatView(){
-  if(!isAdmin()) return;
   if(!selectedChatId) return;
-  const items = await api(`/api/admin/chats/${selectedChatId}/messages`);
+  const messagesUrl = isAdmin()
+    ? `/api/admin/chats/${selectedChatId}/messages`
+    : `/api/user/chats/${selectedChatId}/messages`;
+  const items = await api(messagesUrl);
   renderMessages(items.items || []);
 
-  const chats = await api(`/api/admin/projects/${selectedProjectId}/chats`);
+  const chatsUrl = isAdmin()
+    ? `/api/admin/projects/${selectedProjectId}/chats`
+    : `/api/user/projects/${selectedProjectId}/chats`;
+  const chats = await api(chatsUrl);
   const chat = (chats.items || []).find(x => x.id === selectedChatId);
   if(chat){
     selectedChatName = chat.display_name || chat.id;
@@ -262,7 +268,6 @@ function renderMessages(items){
 }
 
 function startPolling(){
-  if(!isAdmin()) return;
   if(pollTimer) clearInterval(pollTimer);
   pollTimer = setInterval(async ()=>{
     try{ await refreshChatView(); } catch {}

@@ -327,8 +327,36 @@ app.get("/api/admin/projects/:projectId/chats", requireAdmin, async (req, res) =
   res.json({ items: withNames });
 });
 
+app.get("/api/user/projects/:projectId/chats", requireUser, async (req, res) => {
+  const { projectId } = req.params;
+  const project = await getProject(projectId);
+  if (!project || project.owner_id !== req.auth.userId)
+    return res.status(404).json({ error: "project_not_found" });
+
+  const status = req.query.status ? String(req.query.status) : null;
+  const mode = req.query.mode ? String(req.query.mode) : null;
+  const items = await listChats({ projectId, status, mode });
+  const withNames = items.map((chat) => ({
+    ...chat,
+    display_name: getChatDisplayName(chat.id),
+  }));
+  res.json({ items: withNames });
+});
+
 app.get("/api/admin/chats/:chatId/messages", requireAdmin, async (req, res) => {
   const items = await listMessages(req.params.chatId);
+  res.json({ items });
+});
+
+app.get("/api/user/chats/:chatId/messages", requireUser, async (req, res) => {
+  const chat = await getChatById(req.params.chatId);
+  if (!chat) return res.status(404).json({ error: "chat_not_found" });
+
+  const project = await getProject(chat.project_id);
+  if (!project || project.owner_id !== req.auth.userId)
+    return res.status(404).json({ error: "chat_not_found" });
+
+  const items = await listMessages(chat.id);
   res.json({ items });
 });
 
