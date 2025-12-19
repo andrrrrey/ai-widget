@@ -2,6 +2,7 @@ const $ = (s) => document.querySelector(s);
 
 let selectedProjectId = null;
 let selectedChatId = null;
+let selectedChatName = null;
 let pollTimer = null;
 let projectsCache = [];
 let usersCache = [];
@@ -199,27 +200,34 @@ function renderChats(items){
     return;
   }
   for(const c of items){
+    const title = c.display_name || c.id;
     const div = document.createElement("div");
     div.className = "item";
     div.innerHTML = `
       <div class="row" style="justify-content:space-between">
-        <div class="mono">${escapeHtml(c.id)}</div>
+        <div>
+          <div style="font-weight:700">${escapeHtml(title)}</div>
+          <div class="mono muted" style="font-size:12px">${escapeHtml(c.id)}</div>
+        </div>
         <span class="pill">${escapeHtml(c.mode)} • ${escapeHtml(c.status)}</span>
       </div>
       <div class="muted">updated: ${new Date(c.updated_at).toLocaleString()}</div>
       <div class="muted">visitor: ${escapeHtml(c.visitor_id || "-")}</div>
     `;
-    div.addEventListener("click", ()=> openChat(c.id));
+    div.addEventListener("click", ()=> openChat(c));
     box.appendChild(div);
   }
 }
 
-async function openChat(chatId){
+async function openChat(chat){
   if(!isAdmin()) return;
+  const chatId = typeof chat === "string" ? chat : chat?.id;
+  if(!chatId) return;
   selectedChatId = chatId;
+  selectedChatName = typeof chat === "object" ? (chat.display_name || chat.id) : chatId;
   $("#chatPlaceholder").style.display = "none";
   $("#chatBox").style.display = "block";
-  $("#chatId").textContent = chatId;
+  $("#chatId").textContent = selectedChatName || chatId;
   await refreshChatView();
   startPolling();
 }
@@ -232,7 +240,13 @@ async function refreshChatView(){
 
   const chats = await api(`/api/admin/projects/${selectedProjectId}/chats`);
   const chat = (chats.items || []).find(x => x.id === selectedChatId);
-  $("#chatMode").textContent = chat ? chat.mode : "unknown";
+  if(chat){
+    selectedChatName = chat.display_name || chat.id;
+    $("#chatId").textContent = selectedChatName;
+    $("#chatMode").textContent = chat.mode;
+  } else {
+    $("#chatMode").textContent = "unknown";
+  }
 }
 
 function renderMessages(items){

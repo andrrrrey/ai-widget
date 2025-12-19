@@ -25,6 +25,7 @@ import {
 } from "./lib/store.js";
 import { widgetCors } from "./lib/widgetCors.js";
 import { fetchAssistantInstructions, runAssistantStream, syncOperatorToThread } from "./lib/openai.js";
+import { getChatDisplayName } from "./lib/chatNames.js";
 
 dotenv.config({ path: "/var/www/ai-widget/server/.env" });
 
@@ -319,7 +320,11 @@ app.get("/api/admin/projects/:projectId/chats", requireAdmin, async (req, res) =
   const status = req.query.status ? String(req.query.status) : null;
   const mode = req.query.mode ? String(req.query.mode) : null;
   const items = await listChats({ projectId, status, mode });
-  res.json({ items });
+  const withNames = items.map((chat) => ({
+    ...chat,
+    display_name: getChatDisplayName(chat.id),
+  }));
+  res.json({ items: withNames });
 });
 
 app.get("/api/admin/chats/:chatId/messages", requireAdmin, async (req, res) => {

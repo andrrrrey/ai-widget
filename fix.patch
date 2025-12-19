@@ -1,181 +1,317 @@
-diff --git a/.gitignore b/.gitignore
-new file mode 100644
-index 0000000000000000000000000000000000000000..7ca3af7ff68cf0c824ca4cc4ea4630dd2279bc97
---- /dev/null
-+++ b/.gitignore
-@@ -0,0 +1,2 @@
-+node_modules/
-+server/node_modules/
-diff --git a/server/src/lib/db.js b/server/src/lib/db.js
-index a9e50b4f60ff231c61e633685ac38d9079081b37..45985e3d5183ab5c996b5756992b63b3a73f6e72 100644
---- a/server/src/lib/db.js
-+++ b/server/src/lib/db.js
-@@ -1,26 +1,28 @@
- import pg from "pg";
+diff --git a/server/src/index.js b/server/src/index.js
+index 1df429980dcffde4da392fc10308f22210acfe2b..d995d93857a48af975e54cb4eb15b8a4767f0b97 100644
+--- a/server/src/index.js
++++ b/server/src/index.js
+@@ -3,50 +3,51 @@ import cookieParser from "cookie-parser";
+ import path from "path";
+ import { fileURLToPath } from "url";
+ import dotenv from "dotenv";
  
- export const pool = new pg.Pool({
-   connectionString: process.env.DATABASE_URL,
-   max: 10,
-+  // Fail fast instead of hanging the request when Postgres is unreachable
-+  connectionTimeoutMillis: 5_000,
-   idleTimeoutMillis: 30_000,
+ import { ensureSchema, pool } from "./lib/db.js";
+ import { requireAdmin, requireUser, loginHandler, logoutHandler, hashPassword } from "./lib/auth.js";
+ import {
+   createUser,
+   listUsers,
+   findUserByEmail,
+   createProject,
+   listProjects,
+   getProject,
+   updateProject,
+   deleteProject,
+   createChat,
+   getChatById,
+   listChats,
+   listMessages,
+   addMessage,
+   setChatMode,
+   touchChat,
+ } from "./lib/store.js";
+ import { widgetCors } from "./lib/widgetCors.js";
+ import { fetchAssistantInstructions, runAssistantStream, syncOperatorToThread } from "./lib/openai.js";
++import { getChatDisplayName } from "./lib/chatNames.js";
+ 
+ dotenv.config({ path: "/var/www/ai-widget/server/.env" });
+ 
+ const app = express();
+ app.use(express.json({ limit: "2mb" }));
+ app.use(express.urlencoded({ extended: true }));
+ app.use(cookieParser());
+ 
+ const __filename = fileURLToPath(import.meta.url);
+ const __dirname = path.dirname(__filename);
+ 
+ // Static: widget + admin
+ app.use("/widget", express.static(path.join(__dirname, "../../widget")));
+ app.use("/admin", express.static(path.join(__dirname, "../../web-admin")));
+ 
+ app.get("/health", (req, res) => res.json({ ok: true, ts: Date.now() }));
+ 
+ /**
+  * WIDGET API (CORS allowlist per project)
+  */
+ app.options("/api/widget/:projectId/*", widgetCors);
+ 
+ app.post("/api/widget/:projectId/chat/start", widgetCors, async (req, res) => {
+   const { projectId } = req.params;
+   const { visitorId } = req.body || {};
+@@ -297,51 +298,55 @@ app.get(
+ 
+ app.patch("/api/admin/projects/:projectId", requireAdmin, async (req, res) => {
+   const patch = {};
+ 
+   if (typeof req.body?.name === "string") patch.name = req.body.name;
+   if (typeof req.body?.assistant_id === "string") patch.assistant_id = req.body.assistant_id;
+ 
+   // ✅ ВОТ ЭТА СТРОКА РЕШАЕТ ПРОБЛЕМУ: позволяет сохранять API key при PATCH
+   if (typeof req.body?.openai_api_key === "string") patch.openai_api_key = req.body.openai_api_key;
+ 
+   if (typeof req.body?.instructions === "string") patch.instructions = req.body.instructions;
+   if (Array.isArray(req.body?.allowed_origins)) patch.allowed_origins = req.body.allowed_origins.map(String);
+   if (typeof req.body?.owner_id === "string") patch.owner_id = req.body.owner_id;
+ 
+   const project = await updateProject(req.params.projectId, patch);
+   if (!project) return res.status(404).json({ error: "project_not_found" });
+   res.json({ project });
  });
  
- export const sql = {
-   async one(query, params = []) {
-     const r = await pool.query(query, params);
-     if (!r.rows[0]) throw new Error("Expected one row, got zero");
-     return r.rows[0];
-   },
-   async oneOrNone(query, params = []) {
-     const r = await pool.query(query, params);
-     return r.rows[0] || null;
-   },
-   async many(query, params = []) {
-     const r = await pool.query(query, params);
-     return r.rows;
-   },
-   async exec(query, params = []) {
-     await pool.query(query, params);
-   },
- };
+ // Chats and messages (scoped by project)
+ app.get("/api/admin/projects/:projectId/chats", requireAdmin, async (req, res) => {
+   const { projectId } = req.params;
+   const status = req.query.status ? String(req.query.status) : null;
+   const mode = req.query.mode ? String(req.query.mode) : null;
+   const items = await listChats({ projectId, status, mode });
+-  res.json({ items });
++  const withNames = items.map((chat) => ({
++    ...chat,
++    display_name: getChatDisplayName(chat.id),
++  }));
++  res.json({ items: withNames });
+ });
+ 
+ app.get("/api/admin/chats/:chatId/messages", requireAdmin, async (req, res) => {
+   const items = await listMessages(req.params.chatId);
+   res.json({ items });
+ });
+ 
+ app.post("/api/admin/chats/:chatId/takeover", requireAdmin, async (req, res) => {
+   const chat = await setChatMode(req.params.chatId, "human");
+   res.json({ chat });
+ });
+ 
+ app.post("/api/admin/chats/:chatId/release", requireAdmin, async (req, res) => {
+   const chat = await setChatMode(req.params.chatId, "assistant");
+   res.json({ chat });
+ });
+ 
+ app.post("/api/admin/chats/:chatId/message", requireAdmin, async (req, res) => {
+   const text = String(req.body?.text || "").trim();
+   if (!text) return res.status(400).json({ error: "empty" });
+ 
+   const chat = await getChatById(req.params.chatId);
+   if (!chat) return res.status(404).json({ error: "chat_not_found" });
+ 
+   await addMessage({ chatId: chat.id, role: "human", content: text });
+diff --git a/server/src/lib/chatNames.js b/server/src/lib/chatNames.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..2ac180275f6d02a13efc19ebc1586fbfa2261aeb
+--- /dev/null
++++ b/server/src/lib/chatNames.js
+@@ -0,0 +1,60 @@
++const ADJECTIVES = [
++  "весёлый",
++  "ловкий",
++  "мудрый",
++  "крошечный",
++  "смелый",
++  "молчаливый",
++  "сияющий",
++  "смешной",
++  "быстрый",
++  "мечтательный",
++  "нежный",
++  "дерзкий",
++  "улыбчивый",
++  "яркий",
++  "сонный",
++  "бодрый",
++  "любопытный",
++  "задумчивый",
++  "пушистый",
++  "озорной",
++];
++
++const ANIMALS = [
++  "панда",
++  "лисица",
++  "котёнок",
++  "енот",
++  "хомяк",
++  "дельфин",
++  "жираф",
++  "капибара",
++  "барсук",
++  "коала",
++  "выдра",
++  "павлин",
++  "щенок",
++  "улитка",
++  "ежиха",
++  "сурикат",
++  "жук",
++  "морж",
++  "сова",
++  "пингвин",
++];
++
++function hashString(str) {
++  let hash = 0;
++  for (let i = 0; i < str.length; i++) {
++    hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
++  }
++  return hash;
++}
++
++export function getChatDisplayName(chatId) {
++  const hash = hashString(chatId);
++  const adjective = ADJECTIVES[hash % ADJECTIVES.length];
++  const animal = ANIMALS[(hash >> 8) % ANIMALS.length];
++  return `${adjective} ${animal}`;
++}
 diff --git a/web-admin/admin.js b/web-admin/admin.js
-index 62c19f8f779ad8c1025466ffb47ba87218682ee3..6c05f4711925c5d1b5a1ccbcd1a91a6a36f35c51 100644
+index b1b8fd5968d6d9c55eb46756ba91772fad7b006f..b174fc54669813ec0ce91fc29b3a7df2409a2af1 100644
 --- a/web-admin/admin.js
 +++ b/web-admin/admin.js
-@@ -295,62 +295,80 @@ async function refreshUsers(){
- function renderUsers(items){
-   const box = $("#userList");
-   box.innerHTML = "";
-   if(!items.length){
-     box.innerHTML = `<div class="muted">Пока нет пользователей</div>`;
+@@ -1,29 +1,30 @@
+ const $ = (s) => document.querySelector(s);
+ 
+ let selectedProjectId = null;
+ let selectedChatId = null;
++let selectedChatName = null;
+ let pollTimer = null;
+ let projectsCache = [];
+ let usersCache = [];
+ let currentSession = null;
+ 
+ const isAdmin = () => currentSession?.role === "admin";
+ 
+ function projectApiBase(){
+   return isAdmin() ? "/api/admin/projects" : "/api/user/projects";
+ }
+ 
+ async function fetchAssistantInstructions(projectId){
+   if(!isAdmin()) return null;
+   try {
+     const data = await api(`/api/admin/projects/${projectId}/assistant-instructions`);
+     return data?.instructions || "";
+   } catch (err) {
+     console.warn("assistant instructions load failed", err);
+     return null;
+   }
+ }
+ 
+ async function api(path, opts={}){
+   const r = await fetch(path, { credentials:"include", ...opts });
+   const ct = r.headers.get("content-type")||"";
+@@ -177,84 +178,97 @@ async function refreshChats(){
+   if(!isAdmin()){
+     const box = $("#chatList");
+     if(box) box.innerHTML = `<div class="muted">Работа с чатами доступна только администратору</div>`;
+     resetChatView();
      return;
    }
+   if(!selectedProjectId) return;
+   const mode = $("#filterMode").value;
+   const status = $("#filterStatus").value;
+   const qs = new URLSearchParams();
+   if(mode) qs.set("mode", mode);
+   if(status) qs.set("status", status);
  
-   for(const u of items){
+   const j = await api(`/api/admin/projects/${selectedProjectId}/chats?${qs.toString()}`);
+   renderChats(j.items || []);
+ }
+ 
+ function renderChats(items){
+   const box = $("#chatList");
+   box.innerHTML = "";
+   if(!items.length){
+     box.innerHTML = `<div class="muted">Пока нет чатов</div>`;
+     return;
+   }
+   for(const c of items){
++    const title = c.display_name || c.id;
      const div = document.createElement("div");
-     div.className = "userRow";
+     div.className = "item";
      div.innerHTML = `
-       <div>
-         <div class="mono">${escapeHtml(u.email)}</div>
-         <div class="muted">Создан: ${new Date(u.created_at).toLocaleString()}</div>
+       <div class="row" style="justify-content:space-between">
+-        <div class="mono">${escapeHtml(c.id)}</div>
++        <div>
++          <div style="font-weight:700">${escapeHtml(title)}</div>
++          <div class="mono muted" style="font-size:12px">${escapeHtml(c.id)}</div>
++        </div>
+         <span class="pill">${escapeHtml(c.mode)} • ${escapeHtml(c.status)}</span>
        </div>
-       <span class="pill">${escapeHtml(u.role)}</span>
+       <div class="muted">updated: ${new Date(c.updated_at).toLocaleString()}</div>
+       <div class="muted">visitor: ${escapeHtml(c.visitor_id || "-")}</div>
      `;
+-    div.addEventListener("click", ()=> openChat(c.id));
++    div.addEventListener("click", ()=> openChat(c));
      box.appendChild(div);
    }
  }
  
- async function createUserFromForm(e){
+-async function openChat(chatId){
++async function openChat(chat){
    if(!isAdmin()) return;
-   e.preventDefault();
-+  $("#userErr").textContent = "";
-+  $("#userOk").textContent = "";
-   const email = $("#newUserEmail").value.trim().toLowerCase();
-   const password = $("#newUserPassword").value;
--  if(!email || !password) return;
--
--  await api("/api/admin/users", {
--    method:"POST",
--    headers:{ "Content-Type":"application/json" },
--    body: JSON.stringify({ email, password })
--  });
-+  if(!email || !password){
-+    $("#userErr").textContent = "Укажите email и пароль";
-+    return;
-+  }
++  const chatId = typeof chat === "string" ? chat : chat?.id;
++  if(!chatId) return;
+   selectedChatId = chatId;
++  selectedChatName = typeof chat === "object" ? (chat.display_name || chat.id) : chatId;
+   $("#chatPlaceholder").style.display = "none";
+   $("#chatBox").style.display = "block";
+-  $("#chatId").textContent = chatId;
++  $("#chatId").textContent = selectedChatName || chatId;
+   await refreshChatView();
+   startPolling();
+ }
  
--  $("#newUserEmail").value = "";
--  $("#newUserPassword").value = "";
--  await refreshUsers();
-+  try{
-+    await api("/api/admin/users", {
-+      method:"POST",
-+      headers:{ "Content-Type":"application/json" },
-+      body: JSON.stringify({ email, password })
-+    });
-+
-+    $("#newUserEmail").value = "";
-+    $("#newUserPassword").value = "";
-+    $("#userOk").textContent = "Пользователь создан";
-+    await refreshUsers();
-+    setTimeout(()=> $("#userOk").textContent = "", 2000);
-+  } catch(err){
-+    const code = err?.data?.error || err?.message || "api_error";
-+    if(code === "user_exists"){
-+      $("#userErr").textContent = "Такой пользователь уже существует";
-+    } else if(code === "email_and_password_required"){
-+      $("#userErr").textContent = "Нужно указать email и пароль";
-+    } else {
-+      $("#userErr").textContent = "Не удалось создать пользователя. Попробуйте ещё раз.";
-+    }
+ async function refreshChatView(){
+   if(!isAdmin()) return;
+   if(!selectedChatId) return;
+   const items = await api(`/api/admin/chats/${selectedChatId}/messages`);
+   renderMessages(items.items || []);
+ 
+   const chats = await api(`/api/admin/projects/${selectedProjectId}/chats`);
+   const chat = (chats.items || []).find(x => x.id === selectedChatId);
+-  $("#chatMode").textContent = chat ? chat.mode : "unknown";
++  if(chat){
++    selectedChatName = chat.display_name || chat.id;
++    $("#chatId").textContent = selectedChatName;
++    $("#chatMode").textContent = chat.mode;
++  } else {
++    $("#chatMode").textContent = "unknown";
 +  }
  }
  
- $("#btnLogin").addEventListener("click", ()=> login().catch(e => $("#loginErr").textContent = "Ошибка входа"));
- $("#btnLogout").addEventListener("click", ()=> logout().catch(()=>{}));
- $("#btnRefreshProjects").addEventListener("click", ()=> refreshProjects(false).catch(()=>{}));
- $("#btnCreateProject").addEventListener("click", ()=> createProject().catch(()=>{}));
- $("#btnSaveProject").addEventListener("click", ()=> saveProject().catch(()=>{}));
- $("#btnDeleteProject").addEventListener("click", ()=> deleteProject().catch(()=>{}));
- $("#btnRefreshChats").addEventListener("click", ()=> refreshChats().catch(()=>{}));
- $("#projectSelect").addEventListener("change", async (e)=>{
-   selectedProjectId = e.target.value;
-   resetChatView();
-   await loadProject(selectedProjectId);
-   await refreshChats();
- });
- $("#btnRelease").addEventListener("click", ()=> release().catch(()=>{}));
- $("#humanForm").addEventListener("submit", sendHuman);
- $("#btnOpenSettings").addEventListener("click", ()=> showPage("settings"));
- $("#btnBackToChats").addEventListener("click", ()=> showPage("chats"));
- $("#btnOpenUsers").addEventListener("click", ()=>{ showPage("users"); refreshUsers().catch(()=>{}); });
- $("#userForm").addEventListener("submit", (e)=> createUserFromForm(e).catch(()=>{}));
- $("#btnBackFromUsers").addEventListener("click", ()=> showPage("chats"));
+ function renderMessages(items){
+   const box = $("#messages");
+   box.innerHTML = "";
+   for(const m of items){
+     const div = document.createElement("div");
+     div.className = "msg " + m.role;
+     div.innerHTML = `<div class="bubble">${escapeHtml(m.content)}</div>`;
+     box.appendChild(div);
+   }
+   box.scrollTop = box.scrollHeight;
+ }
  
- showPage("chats");
-diff --git a/web-admin/index.html b/web-admin/index.html
-index d27638938a24b0fc35ffb4b6e5879a869c28d9e9..f6e1d703bacf9ed6aa7f78216ca6479077483c87 100644
---- a/web-admin/index.html
-+++ b/web-admin/index.html
-@@ -166,35 +166,40 @@
-               <p class="eyebrow">Пользователи</p>
-               <h2>Создание и просмотр пользователей</h2>
-               <p class="muted">Администратор может добавлять аккаунты для работы в системе.</p>
-             </div>
-             <div class="row">
-               <button id="btnBackFromUsers" class="ghost">← Назад</button>
-             </div>
-           </div>
+ function startPolling(){
+   if(!isAdmin()) return;
+   if(pollTimer) clearInterval(pollTimer);
+   pollTimer = setInterval(async ()=>{
+     try{ await refreshChatView(); } catch {}
+   }, 1500);
+ }
  
-           <div class="card" style="display:flex;flex-direction:column;gap:12px">
-             <form id="userForm" class="formGrid" style="align-items:flex-end">
-               <div>
-                 <label class="muted">Email пользователя</label>
-                 <input id="newUserEmail" placeholder="user@example.com" type="email" required />
-               </div>
-               <div>
-                 <label class="muted">Пароль</label>
-                 <input id="newUserPassword" placeholder="Пароль" type="password" required />
-               </div>
-               <div>
-                 <label class="muted">&nbsp;</label>
-                 <button type="submit" class="primary full">Создать</button>
-               </div>
-             </form>
- 
-+            <div class="row" style="justify-content:space-between">
-+              <div id="userErr" class="err"></div>
-+              <div id="userOk" class="ok"></div>
-+            </div>
-+
-             <div id="userList" class="list"></div>
-           </div>
-         </section>
-       </main>
-     </div>
-   </div>
- 
-   <script src="/admin/admin.js"></script>
- </body>
- </html>
+ async function takeover(){
+   if(!isAdmin()) return;
+   if(!selectedChatId) return;
