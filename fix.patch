@@ -1,364 +1,80 @@
-diff --git a/server/src/index.js b/server/src/index.js
-index d995d93857a48af975e54cb4eb15b8a4767f0b97..55792473b8c0a8b1658b8c2d73ed721896f3b116 100644
---- a/server/src/index.js
-+++ b/server/src/index.js
-@@ -305,55 +305,83 @@ app.patch("/api/admin/projects/:projectId", requireAdmin, async (req, res) => {
-   // ✅ ВОТ ЭТА СТРОКА РЕШАЕТ ПРОБЛЕМУ: позволяет сохранять API key при PATCH
-   if (typeof req.body?.openai_api_key === "string") patch.openai_api_key = req.body.openai_api_key;
+diff --git a/server/src/lib/widgetCors.js b/server/src/lib/widgetCors.js
+index 3632dcf1c0e93e63843a52d9ccc24ee1a1fd5cd3..2ffc1edf4d912f98818eb7e12767872a7e6948ae 100644
+--- a/server/src/lib/widgetCors.js
++++ b/server/src/lib/widgetCors.js
+@@ -1,39 +1,69 @@
+ import { getProject } from "./store.js";
  
-   if (typeof req.body?.instructions === "string") patch.instructions = req.body.instructions;
-   if (Array.isArray(req.body?.allowed_origins)) patch.allowed_origins = req.body.allowed_origins.map(String);
-   if (typeof req.body?.owner_id === "string") patch.owner_id = req.body.owner_id;
- 
-   const project = await updateProject(req.params.projectId, patch);
-   if (!project) return res.status(404).json({ error: "project_not_found" });
-   res.json({ project });
- });
- 
- // Chats and messages (scoped by project)
- app.get("/api/admin/projects/:projectId/chats", requireAdmin, async (req, res) => {
-   const { projectId } = req.params;
-   const status = req.query.status ? String(req.query.status) : null;
-   const mode = req.query.mode ? String(req.query.mode) : null;
-   const items = await listChats({ projectId, status, mode });
-   const withNames = items.map((chat) => ({
-     ...chat,
-     display_name: getChatDisplayName(chat.id),
-   }));
-   res.json({ items: withNames });
- });
- 
-+app.get("/api/user/projects/:projectId/chats", requireUser, async (req, res) => {
-+  const { projectId } = req.params;
-+  const project = await getProject(projectId);
-+  if (!project || project.owner_id !== req.auth.userId)
-+    return res.status(404).json({ error: "project_not_found" });
++function normalizeOrigin(value) {
++  if (!value) return null;
 +
-+  const status = req.query.status ? String(req.query.status) : null;
-+  const mode = req.query.mode ? String(req.query.mode) : null;
-+  const items = await listChats({ projectId, status, mode });
-+  const withNames = items.map((chat) => ({
-+    ...chat,
-+    display_name: getChatDisplayName(chat.id),
-+  }));
-+  res.json({ items: withNames });
-+});
++  const trimmed = String(value).trim().replace(/\/+$/, "");
 +
- app.get("/api/admin/chats/:chatId/messages", requireAdmin, async (req, res) => {
-   const items = await listMessages(req.params.chatId);
-   res.json({ items });
- });
- 
-+app.get("/api/user/chats/:chatId/messages", requireUser, async (req, res) => {
-+  const chat = await getChatById(req.params.chatId);
-+  if (!chat) return res.status(404).json({ error: "chat_not_found" });
++  try {
++    const u = new URL(trimmed);
++    return { origin: u.origin.toLowerCase(), host: u.host.toLowerCase() };
++  } catch (err) {
++    // Not a full URL (e.g. "example.com") — fallback to host-only comparison
++    return { origin: null, host: trimmed.toLowerCase() };
++  }
++}
 +
-+  const project = await getProject(chat.project_id);
-+  if (!project || project.owner_id !== req.auth.userId)
-+    return res.status(404).json({ error: "chat_not_found" });
-+
-+  const items = await listMessages(chat.id);
-+  res.json({ items });
-+});
-+
- app.post("/api/admin/chats/:chatId/takeover", requireAdmin, async (req, res) => {
-   const chat = await setChatMode(req.params.chatId, "human");
-   res.json({ chat });
- });
- 
- app.post("/api/admin/chats/:chatId/release", requireAdmin, async (req, res) => {
-   const chat = await setChatMode(req.params.chatId, "assistant");
-   res.json({ chat });
- });
- 
- app.post("/api/admin/chats/:chatId/message", requireAdmin, async (req, res) => {
-   const text = String(req.body?.text || "").trim();
-   if (!text) return res.status(400).json({ error: "empty" });
- 
-   const chat = await getChatById(req.params.chatId);
-   if (!chat) return res.status(404).json({ error: "chat_not_found" });
- 
-   await addMessage({ chatId: chat.id, role: "human", content: text });
- 
+ /**
+  * For widget routes we reflect Access-Control-Allow-Origin ONLY if origin is in allowed_origins.
+  * If allowed_origins is empty -> deny by default (safer).
++ *
++ * Normalization notes:
++ * - Allowed origins are trimmed + lowercased.
++ * - Trailing slashes are ignored.
++ * - Plain hostnames ("example.com") are supported alongside full origins.
+  */
+ export async function widgetCors(req, res, next) {
    try {
-     const project = await getProject(chat.project_id);
-     if (project?.openai_api_key) {
-       await syncOperatorToThread(project.openai_api_key, chat.thread_id, text);
+-    const origin = req.headers.origin;
++    const rawOrigin = req.headers.origin;
+     const projectId = req.params.projectId;
+ 
+     // Non-browser (no Origin) — allow (e.g. curl/health), but for widget it's mostly browser anyway.
+-    if (!origin) return next();
++    if (!rawOrigin) return next();
++
++    const originInfo = normalizeOrigin(rawOrigin);
++    if (!originInfo) return res.status(400).json({ error: "invalid_origin" });
+ 
+     const project = await getProject(projectId);
+     if (!project) return res.status(404).json({ error: "project_not_found" });
+ 
+-    const allowed = Array.isArray(project.allowed_origins) ? project.allowed_origins : [];
+-    const ok = allowed.includes(origin);
++    const allowedList = Array.isArray(project.allowed_origins) ? project.allowed_origins : [];
++    const normalizedAllowed = allowedList
++      .map(normalizeOrigin)
++      .filter(Boolean);
++
++    const ok = normalizedAllowed.some((item) => {
++      if (item.origin && originInfo.origin === item.origin) return true;
++      if (item.host && originInfo.host === item.host) return true;
++      return false;
++    });
+ 
+     if (!ok) {
+-      return res.status(403).json({ error: "origin_not_allowed", origin });
++      return res.status(403).json({ error: "origin_not_allowed", origin: rawOrigin });
      }
+ 
+-    res.setHeader("Access-Control-Allow-Origin", origin);
++    res.setHeader("Access-Control-Allow-Origin", rawOrigin);
+     res.setHeader("Access-Control-Allow-Credentials", "true");
+     res.setHeader("Vary", "Origin");
+ 
+     if (req.method === "OPTIONS") {
+       res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+       res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+       return res.status(204).end();
+     }
+ 
+     return next();
    } catch (e) {
-diff --git a/web-admin/admin.js b/web-admin/admin.js
-index b174fc54669813ec0ce91fc29b3a7df2409a2af1..1979b4ef2392681b0d1594f3386955d338f2fa3e 100644
---- a/web-admin/admin.js
-+++ b/web-admin/admin.js
-@@ -21,112 +21,117 @@ async function fetchAssistantInstructions(projectId){
-     return data?.instructions || "";
-   } catch (err) {
-     console.warn("assistant instructions load failed", err);
-     return null;
+     return res.status(500).json({ error: "cors_error", message: e?.message || String(e) });
    }
  }
- 
- async function api(path, opts={}){
-   const r = await fetch(path, { credentials:"include", ...opts });
-   const ct = r.headers.get("content-type")||"";
-   const data = ct.includes("application/json") ? await r.json() : await r.text();
-   if(!r.ok) throw Object.assign(new Error(data?.error || "api_error"), { data, status:r.status });
-   return data;
- }
- 
- function escapeHtml(s){
-   return String(s)
-     .replaceAll("&","&amp;")
-     .replaceAll("<","&lt;")
-     .replaceAll(">","&gt;")
-     .replaceAll('"',"&quot;")
-     .replaceAll("'","&#039;");
- }
- 
- function showPage(page){
--  if(page === "chats" && !isAdmin()) page = "settings";
-   const pages = { chats: "#pageChats", settings: "#pageSettings", users: "#pageUsers" };
-   Object.entries(pages).forEach(([key, sel])=>{
-     const el = $(sel);
-     if(el) el.style.display = key === page ? "block" : "none";
-   });
- }
- 
- function applyRoleVisibility(){
-   document.querySelectorAll(".adminOnly").forEach(el => {
-     el.style.display = isAdmin() ? "" : "none";
-   });
-+
-+  const humanForm = $("#humanForm");
-+  if(humanForm) humanForm.style.display = isAdmin() ? "flex" : "none";
-+
-+  const releaseBtn = $("#btnRelease");
-+  if(releaseBtn) releaseBtn.style.display = isAdmin() ? "" : "none";
- }
- 
- async function login(){
-   $("#loginErr").textContent = "";
-   const login = $("#login").value.trim();
-   const password = $("#password").value;
-   const session = await api("/api/admin/login", {
-     method:"POST",
-     headers:{ "Content-Type":"application/json" },
-     body: JSON.stringify({ login, password })
-   });
-   currentSession = session;
-   applyRoleVisibility();
-   $("#loginBox").style.display = "none";
-   $("#app").style.display = "flex";
--  showPage(isAdmin() ? "chats" : "settings");
-+  showPage("chats");
-   await refreshProjects(true);
-   if(isAdmin()) await refreshUsers();
- }
- 
- async function logout(){
-   await api("/api/admin/logout", { method:"POST" });
-   location.reload();
- }
- 
- async function refreshProjects(autoSelectFirst=false){
-   const j = await api(projectApiBase());
-   const items = j.items || [];
-   projectsCache = items;
-   const sel = $("#projectSelect");
-   sel.innerHTML = "";
-   for(const p of items){
-     const opt = document.createElement("option");
-     opt.value = p.id;
-     opt.textContent = p.name;
-     sel.appendChild(opt);
-   }
- 
-   if(autoSelectFirst && items[0]){
-     selectedProjectId = items[0].id;
-     sel.value = selectedProjectId;
-   } else if(selectedProjectId){
-     sel.value = selectedProjectId;
-   } else if(items[0]){
-     selectedProjectId = items[0].id;
-     sel.value = selectedProjectId;
-   }
- 
-   if(selectedProjectId) await loadProject(selectedProjectId);
--  if(isAdmin()) await refreshChats();
-+  await refreshChats();
- }
- 
- async function createProject(){
-   const name = prompt("Название проекта", "Новый проект")?.trim();
-   if(!name) return;
-   const j = await api(projectApiBase(), {
-     method:"POST",
-     headers:{ "Content-Type":"application/json" },
-     body: JSON.stringify({ name, openai_api_key:"", assistant_id:"", instructions:"", allowed_origins:[] })
-   });
-   selectedProjectId = j.project.id;
-   await refreshProjects(false);
-   $("#projectSelect").value = selectedProjectId;
-   await loadProject(selectedProjectId);
-   if(isAdmin()) await refreshChats();
- }
- 
- async function loadProject(projectId){
-   const j = await api(`${projectApiBase()}/${projectId}`);
-   const p = j.project;
-   selectedProjectId = p.id;
- 
-   const projectName = projectsCache.find(x => x.id === p.id)?.name || "Проект";
-   $("#projectBadge").textContent = projectName;
-   $("#projectId").textContent = p.id;
-@@ -153,138 +158,138 @@ async function saveProject(){
-     .map(s => s.trim())
-     .filter(Boolean);
- 
-   const url = `${projectApiBase()}/${selectedProjectId}`;
- 
-   await api(url, {
-     method:"PATCH",
-     headers:{ "Content-Type":"application/json" },
-     body: JSON.stringify({ openai_api_key, assistant_id, instructions, allowed_origins })
-   });
- 
-   $("#saveOk").textContent = "Сохранено";
-   setTimeout(()=> $("#saveOk").textContent = "", 1400);
- }
- 
- async function deleteProject(){
-   if(!selectedProjectId) return;
-   if(!confirm("Удалить текущий проект? Это действие нельзя отменить.")) return;
-   await api(`${projectApiBase()}/${selectedProjectId}`, { method:"DELETE" });
-   selectedProjectId = null;
-   resetChatView();
-   await refreshProjects(true);
- }
- 
- async function refreshChats(){
--  if(!isAdmin()){
--    const box = $("#chatList");
--    if(box) box.innerHTML = `<div class="muted">Работа с чатами доступна только администратору</div>`;
--    resetChatView();
--    return;
--  }
-   if(!selectedProjectId) return;
-   const mode = $("#filterMode").value;
-   const status = $("#filterStatus").value;
-   const qs = new URLSearchParams();
-   if(mode) qs.set("mode", mode);
-   if(status) qs.set("status", status);
- 
--  const j = await api(`/api/admin/projects/${selectedProjectId}/chats?${qs.toString()}`);
-+  const base = isAdmin()
-+    ? `/api/admin/projects/${selectedProjectId}/chats`
-+    : `/api/user/projects/${selectedProjectId}/chats`;
-+  const j = await api(`${base}?${qs.toString()}`);
-   renderChats(j.items || []);
- }
- 
- function renderChats(items){
-   const box = $("#chatList");
-   box.innerHTML = "";
-   if(!items.length){
-     box.innerHTML = `<div class="muted">Пока нет чатов</div>`;
-     return;
-   }
-   for(const c of items){
-     const title = c.display_name || c.id;
-     const div = document.createElement("div");
-     div.className = "item";
-     div.innerHTML = `
-       <div class="row" style="justify-content:space-between">
-         <div>
-           <div style="font-weight:700">${escapeHtml(title)}</div>
-           <div class="mono muted" style="font-size:12px">${escapeHtml(c.id)}</div>
-         </div>
-         <span class="pill">${escapeHtml(c.mode)} • ${escapeHtml(c.status)}</span>
-       </div>
-       <div class="muted">updated: ${new Date(c.updated_at).toLocaleString()}</div>
-       <div class="muted">visitor: ${escapeHtml(c.visitor_id || "-")}</div>
-     `;
-     div.addEventListener("click", ()=> openChat(c));
-     box.appendChild(div);
-   }
- }
- 
- async function openChat(chat){
--  if(!isAdmin()) return;
-   const chatId = typeof chat === "string" ? chat : chat?.id;
-   if(!chatId) return;
-   selectedChatId = chatId;
-   selectedChatName = typeof chat === "object" ? (chat.display_name || chat.id) : chatId;
-   $("#chatPlaceholder").style.display = "none";
-   $("#chatBox").style.display = "block";
-   $("#chatId").textContent = selectedChatName || chatId;
-   await refreshChatView();
-   startPolling();
- }
- 
- async function refreshChatView(){
--  if(!isAdmin()) return;
-   if(!selectedChatId) return;
--  const items = await api(`/api/admin/chats/${selectedChatId}/messages`);
-+  const messagesUrl = isAdmin()
-+    ? `/api/admin/chats/${selectedChatId}/messages`
-+    : `/api/user/chats/${selectedChatId}/messages`;
-+  const items = await api(messagesUrl);
-   renderMessages(items.items || []);
- 
--  const chats = await api(`/api/admin/projects/${selectedProjectId}/chats`);
-+  const chatsUrl = isAdmin()
-+    ? `/api/admin/projects/${selectedProjectId}/chats`
-+    : `/api/user/projects/${selectedProjectId}/chats`;
-+  const chats = await api(chatsUrl);
-   const chat = (chats.items || []).find(x => x.id === selectedChatId);
-   if(chat){
-     selectedChatName = chat.display_name || chat.id;
-     $("#chatId").textContent = selectedChatName;
-     $("#chatMode").textContent = chat.mode;
-   } else {
-     $("#chatMode").textContent = "unknown";
-   }
- }
- 
- function renderMessages(items){
-   const box = $("#messages");
-   box.innerHTML = "";
-   for(const m of items){
-     const div = document.createElement("div");
-     div.className = "msg " + m.role;
-     div.innerHTML = `<div class="bubble">${escapeHtml(m.content)}</div>`;
-     box.appendChild(div);
-   }
-   box.scrollTop = box.scrollHeight;
- }
- 
- function startPolling(){
--  if(!isAdmin()) return;
-   if(pollTimer) clearInterval(pollTimer);
-   pollTimer = setInterval(async ()=>{
-     try{ await refreshChatView(); } catch {}
-   }, 1500);
- }
- 
- async function takeover(){
-   if(!isAdmin()) return;
-   if(!selectedChatId) return;
-   await api(`/api/admin/chats/${selectedChatId}/takeover`, { method:"POST" });
-   await refreshChats();
-   await refreshChatView();
- }
- 
- async function release(){
-   if(!isAdmin()) return;
-   if(!selectedChatId) return;
-   await api(`/api/admin/chats/${selectedChatId}/release`, { method:"POST" });
-   await refreshChats();
-   await refreshChatView();
- }
- 
- async function sendHuman(e){
-   if(!isAdmin()) return;
-   e.preventDefault();
