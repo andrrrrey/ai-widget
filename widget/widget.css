@@ -124,13 +124,14 @@
   justify-content:flex-end;
   gap: 18px;
   padding: 10px 0 6px;
-  overflow:auto;
+  overflow-y:auto;
+  overflow-x:hidden;
   scrollbar-width: none;
 }
 
 .aiw-chat::-webkit-scrollbar{width:0;height:0}
 
-.aiw-msg{ display:flex; flex-direction:column; gap: 8px; max-width: 860px; }
+.aiw-msg{ display:flex; flex-direction:column; gap: 8px; max-width: 774px; }
 .aiw-msg.aiw-left{ align-self:flex-start; }
 .aiw-msg.aiw-right{ align-self:flex-end; }
 
@@ -141,11 +142,10 @@
   border: 1px solid var(--aiw-bubble-border);
   border-radius: 12px;
   padding: 14px 16px;
-  box-shadow: 0 10px 22px rgba(0,0,0,.05);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   width: fit-content;
-  max-width: 720px;
+  max-width: 648px;
 }
 
 .aiw-msg.aiw-left .aiw-bubble{ border-top-left-radius: 8px; }
