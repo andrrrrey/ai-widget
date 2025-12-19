@@ -52,6 +52,8 @@ export function verifyPassword(password, passwordHash) {
   return compare === hash;
 }
 
+const secureCookies = process.env.NODE_ENV === "production";
+
 export async function loginHandler(req, res) {
   const login = String(req.body?.login || "").toLowerCase();
   const password = String(req.body?.password || "");
@@ -64,7 +66,7 @@ export async function loginHandler(req, res) {
     res.cookie(COOKIE, token, {
       httpOnly: true,
       sameSite: "lax",
-      secure: true,
+      secure: secureCookies,
       maxAge: 7 * 24 * 3600 * 1000,
     });
     return res.json({ ok: true, role: "admin" });
@@ -79,7 +81,7 @@ export async function loginHandler(req, res) {
   res.cookie(COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: true,
+    secure: secureCookies,
     maxAge: 7 * 24 * 3600 * 1000,
   });
   res.json({ ok: true, role: user.role || "user", user: { id: user.id, email: user.email } });
@@ -89,7 +91,7 @@ export function logoutHandler(req, res) {
   res.cookie(COOKIE, "", {
     httpOnly: true,
     sameSite: "lax",
-    secure: true,
+    secure: secureCookies,
     maxAge: 0,
   });
   res.json({ ok: true });
