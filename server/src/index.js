@@ -24,7 +24,7 @@ import {
   touchChat,
 } from "./lib/store.js";
 import { widgetCors } from "./lib/widgetCors.js";
-import { runAssistantStream, syncOperatorToThread } from "./lib/openai.js";
+import { fetchAssistantInstructions, runAssistantStream, syncOperatorToThread } from "./lib/openai.js";
 
 dotenv.config({ path: "/var/www/ai-widget/server/.env" });
 
@@ -270,6 +270,30 @@ app.get("/api/admin/projects/:projectId", requireAdmin, async (req, res) => {
   if (!project) return res.status(404).json({ error: "project_not_found" });
   res.json({ project });
 });
+
+app.get(
+  "/api/admin/projects/:projectId/assistant-instructions",
+  requireAdmin,
+  async (req, res) => {
+    const project = await getProject(req.params.projectId);
+    if (!project) return res.status(404).json({ error: "project_not_found" });
+    if (!project.assistant_id) return res.status(400).json({ error: "assistant_id_missing" });
+    if (!project.openai_api_key) return res.status(400).json({ error: "openai_api_key_missing" });
+
+    try {
+      const instructions = await fetchAssistantInstructions({
+        apiKey: project.openai_api_key,
+        assistantId: project.assistant_id,
+      });
+      res.json({ instructions });
+    } catch (err) {
+      console.warn("assistant instructions fetch error", err?.message || err);
+      res
+        .status(500)
+        .json({ error: "failed_to_fetch_assistant", message: err?.message || "" });
+    }
+  }
+);
 
 app.patch("/api/admin/projects/:projectId", requireAdmin, async (req, res) => {
   const patch = {};

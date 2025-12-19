@@ -13,6 +13,17 @@ function projectApiBase(){
   return isAdmin() ? "/api/admin/projects" : "/api/user/projects";
 }
 
+async function fetchAssistantInstructions(projectId){
+  if(!isAdmin()) return null;
+  try {
+    const data = await api(`/api/admin/projects/${projectId}/assistant-instructions`);
+    return data?.instructions || "";
+  } catch (err) {
+    console.warn("assistant instructions load failed", err);
+    return null;
+  }
+}
+
 async function api(path, opts={}){
   const r = await fetch(path, { credentials:"include", ...opts });
   const ct = r.headers.get("content-type")||"";
@@ -120,7 +131,12 @@ async function loadProject(projectId){
   $("#projectId").textContent = p.id;
   $("#apiKey").value = p.openai_api_key || "";
   $("#assistantId").value = p.assistant_id || "";
-  $("#instructions").value = p.instructions || "";
+  let instructions = p.instructions || "";
+  if(isAdmin() && p.assistant_id){
+    const ai = await fetchAssistantInstructions(p.id);
+    if(typeof ai === "string" && ai) instructions = ai;
+  }
+  $("#instructions").value = instructions;
   $("#origins").value = (p.allowed_origins || []).join("\n");
 }
 

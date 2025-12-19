@@ -90,3 +90,9 @@ export async function runAssistantStream({ apiKey,
     onError?.(err);
   }
 }
+
+export async function fetchAssistantInstructions({ apiKey, assistantId }) {
+  const client = getClient(apiKey);
+  const assistant = await client.beta.assistants.retrieve(assistantId);
+  return assistant?.instructions || "";
+}
