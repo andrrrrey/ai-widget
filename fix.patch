@@ -1,8 +1,75 @@
+diff --git a/widget/widget.css b/widget/widget.css
+index b554318d466f18bdef356d4c95ed991071ecd801..53e76e879f57a95a64b0bdfba2f6a3fa092aaebf 100644
+--- a/widget/widget.css
++++ b/widget/widget.css
+@@ -104,50 +104,51 @@
+ 
+ .aiw-hero{
+   display:flex;
+   flex-direction:column;
+   align-items:center;
+   justify-content:flex-start;
+   gap: 14px;
+   padding-top: 48px;
+   flex: 0 0 auto;
+   pointer-events:none;
+ }
+ 
+ .aiw-sparkle{ width:40px;height:40px;color:#0f0f10;opacity:.95; }
+ .aiw-title{ font-size: clamp(22px, 2.2vw, 34px); font-weight: 500; letter-spacing:.2px; }
+ 
+ .aiw-chat{
+   flex: 1 1 auto;
+   min-height: 0;
+   display:flex;
+   flex-direction:column;
+   justify-content:flex-end;
+   gap: 18px;
+   padding: 10px 0 6px;
+   overflow-y:auto;
+   overflow-x:hidden;
++  scroll-behavior: smooth;
+   scrollbar-width: none;
+ }
+ 
+ .aiw-chat::-webkit-scrollbar{width:0;height:0}
+ 
+ .aiw-msg{ display:flex; flex-direction:column; gap: 8px; max-width: 774px; }
+ .aiw-msg.aiw-left{ align-self:flex-start; }
+ .aiw-msg.aiw-right{ align-self:flex-end; }
+ 
+ .aiw-label{ font-size: 12px; letter-spacing: .08em; color: var(--aiw-muted); padding: 0 10px; }
+ 
+ .aiw-bubble{
+   background: var(--aiw-bubble-bg);
+   border: 1px solid var(--aiw-bubble-border);
+   border-radius: 12px;
+   padding: 14px 16px;
+   backdrop-filter: blur(10px);
+   -webkit-backdrop-filter: blur(10px);
+   width: fit-content;
+   max-width: 648px;
+ }
+ 
+ .aiw-msg.aiw-left .aiw-bubble{ border-top-left-radius: 8px; }
+ .aiw-msg.aiw-right .aiw-bubble{ border-top-right-radius: 8px; }
+ 
 diff --git a/widget/widget.js b/widget/widget.js
-index de4d13317236b0413caa89be7010f2950b253734..aeb62214febfc23180c87d014d931843cb829903 100644
+index 9e09f996eb91d06a2f8ffc689adf5394e191a22f..00615d068acc889a323180f9ccc72b4ddfd4477d 100644
 --- a/widget/widget.js
 +++ b/widget/widget.js
-@@ -68,145 +68,183 @@
+@@ -57,94 +57,126 @@
+ 
+       <div class="aiw-composerWrap">
+         <form class="aiw-composer" id="aiw-form" role="group" aria-label="Message composer">
+           <input class="aiw-input" id="aiw-input" placeholder="Ask me anything about your projects" autocomplete="off"/>
+           <button class="aiw-send" type="submit" aria-label="Send">
+             <svg viewBox="0 0 24 24" fill="none" stroke="rgba(130,140,155,.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+               <path d="M22 2L11 13" />
+               <path d="M22 2L15 22l-4-9-9-4 20-7z" />
+             </svg>
+           </button>
+         </form>
        </div>
      </div>
    `;
@@ -17,19 +84,32 @@ index de4d13317236b0413caa89be7010f2950b253734..aeb62214febfc23180c87d014d931843
    const msgs = panel.querySelector("#aiw-msgs");
    const statusEl = panel.querySelector("#aiw-status");
  
++  let renderedCount = 0;
++  let shouldAutoScroll = true;
++
    function setStatus(text) {
      statusEl.textContent = text || "";
    }
  
-   function append(role, text) {
+-  function append(role, text) {
++  function isAtBottom() {
++    const threshold = 24;
++    return msgs.scrollHeight - msgs.scrollTop - msgs.clientHeight <= threshold;
++  }
++
++  function scrollToBottom(useSmooth = true) {
++    msgs.scrollTo({ top: msgs.scrollHeight, behavior: useSmooth ? "smooth" : "auto" });
++  }
++
++  function append(role, text, opts = {}) {
++    const stickToBottom = opts.forceScroll || shouldAutoScroll;
      const item = document.createElement("div");
      const isUser = role === "user";
      item.className = "aiw-msg " + (isUser ? "aiw-right" : "aiw-left");
  
      const label = document.createElement("div");
      label.className = "aiw-label";
--    label.textContent = isUser ? "ME" : "OUR AI";
-+    label.textContent = isUser ? "ME" : role === "human" ? "OPERATOR" : "OUR AI";
+     label.textContent = isUser ? "ME" : role === "human" ? "OPERATOR" : "OUR AI";
  
      const bubble = document.createElement("div");
      bubble.className = "aiw-bubble";
@@ -41,7 +121,9 @@ index de4d13317236b0413caa89be7010f2950b253734..aeb62214febfc23180c87d014d931843
      item.appendChild(bubble);
  
      msgs.appendChild(item);
-     msgs.scrollTop = msgs.scrollHeight;
+-    msgs.scrollTop = msgs.scrollHeight;
++    renderedCount++;
++    if (stickToBottom) scrollToBottom(true);
      return p;
    }
  
@@ -58,41 +140,58 @@ index de4d13317236b0413caa89be7010f2950b253734..aeb62214febfc23180c87d014d931843
      return chatId;
    }
  
-+  function renderMessages(items) {
-+    msgs.innerHTML = "";
-+    items.forEach((item) => append(item.role, item.content));
-+    msgs.scrollTop = msgs.scrollHeight;
-+  }
+   function renderMessages(items) {
+-    msgs.innerHTML = "";
+-    items.forEach((item) => append(item.role, item.content));
+-    msgs.scrollTop = msgs.scrollHeight;
++    const wasAtBottom = isAtBottom();
 +
-+  let pollTimer = null;
-+  let pollInFlight = false;
-+
-+  async function syncMessages() {
-+    if (!chatId || pollInFlight) return;
-+    pollInFlight = true;
-+    try {
-+      const r = await fetch(`${BASE}/api/widget/${projectId}/chat/${chatId}/messages`);
-+      if (!r.ok) throw new Error("messages_failed");
-+      const j = await r.json();
-+      if (Array.isArray(j.items)) renderMessages(j.items);
-+    } catch (e) {
-+      console.warn("syncMessages failed", e);
-+    } finally {
-+      pollInFlight = false;
++    if (msgs.children.length > items.length) {
++      msgs.innerHTML = "";
++      renderedCount = 0;
 +    }
-+  }
 +
-+  function startPollingMessages() {
-+    if (pollTimer) return;
-+    pollTimer = setInterval(syncMessages, 2000);
-+  }
++    items.forEach((item, idx) => {
++      const existing = msgs.children[idx];
++      if (existing) {
++        const bubbleText = existing.querySelector(".aiw-bubble p");
++        if (bubbleText && bubbleText.textContent !== item.content) {
++          bubbleText.textContent = item.content;
++        }
++      } else {
++        append(item.role, item.content, { forceScroll: wasAtBottom });
++      }
++    });
 +
-+  function stopPollingMessages() {
-+    if (!pollTimer) return;
-+    clearInterval(pollTimer);
-+    pollTimer = null;
-+  }
-+
++    renderedCount = items.length;
++    if (wasAtBottom) scrollToBottom(true);
+   }
+ 
+   let pollTimer = null;
+   let pollInFlight = false;
+ 
+   async function syncMessages() {
+     if (!chatId || pollInFlight) return;
+     pollInFlight = true;
+     try {
+       const r = await fetch(`${BASE}/api/widget/${projectId}/chat/${chatId}/messages`);
+       if (!r.ok) throw new Error("messages_failed");
+       const j = await r.json();
+       if (Array.isArray(j.items)) renderMessages(j.items);
+     } catch (e) {
+       console.warn("syncMessages failed", e);
+     } finally {
+       pollInFlight = false;
+     }
+   }
+ 
+   function startPollingMessages() {
+     if (pollTimer) return;
+     pollTimer = setInterval(syncMessages, 2000);
+   }
+ 
+@@ -156,51 +188,51 @@
+ 
    async function sendMessage(text) {
      await ensureChat();
  
@@ -117,12 +216,13 @@ index de4d13317236b0413caa89be7010f2950b253734..aeb62214febfc23180c87d014d931843
        }
        acc += t;
        assistantText.textContent = acc;
-       msgs.scrollTop = msgs.scrollHeight;
+-      msgs.scrollTop = msgs.scrollHeight;
++      if (shouldAutoScroll) scrollToBottom(true);
      });
  
      es.addEventListener("waiting_for_human", () => {
        setStatus("Оператор подключился. Подождите, пожалуйста…");
-+      startPollingMessages();
+       startPollingMessages();
      });
  
      es.addEventListener("error", (e) => {
@@ -143,25 +243,7 @@ index de4d13317236b0413caa89be7010f2950b253734..aeb62214febfc23180c87d014d931843
  
    async function openPanel() {
      isOpen = true;
-     btn.classList.add("aiw-hide");
-     overlay.classList.add("aiw-show");
-     overlayClose.classList.add("aiw-visible");
-     panel.classList.add("aiw-open");
-     try {
-       await ensureChat();
-+      await syncMessages();
-     } catch (e) {
-       console.error(e);
-     }
-     setTimeout(() => input.focus(), 120);
-   }
- 
-   function closePanel() {
-     isOpen = false;
-     overlay.classList.remove("aiw-show");
-     overlayClose.classList.remove("aiw-visible");
-     panel.classList.remove("aiw-open");
-+    stopPollingMessages();
+@@ -227,34 +259,38 @@
      setTimeout(() => btn.classList.remove("aiw-hide"), 200);
    }
  
@@ -187,3 +269,16 @@ index de4d13317236b0413caa89be7010f2950b253734..aeb62214febfc23180c87d014d931843
      }
    });
  
++  msgs.addEventListener("scroll", () => {
++    shouldAutoScroll = isAtBottom();
++  });
++
+   function escapeHtml(s) {
+     return String(s)
+       .replaceAll("&", "&amp;")
+       .replaceAll("<", "&lt;")
+       .replaceAll(">", "&gt;")
+       .replaceAll('"', "&quot;")
+       .replaceAll("'", "&#039;");
+   }
+ })();

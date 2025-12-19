@@ -79,11 +79,24 @@
   const msgs = panel.querySelector("#aiw-msgs");
   const statusEl = panel.querySelector("#aiw-status");
 
+  let renderedCount = 0;
+  let shouldAutoScroll = true;
+
   function setStatus(text) {
     statusEl.textContent = text || "";
   }
 
-  function append(role, text) {
+  function isAtBottom() {
+    const threshold = 24;
+    return msgs.scrollHeight - msgs.scrollTop - msgs.clientHeight <= threshold;
+  }
+
+  function scrollToBottom(useSmooth = true) {
+    msgs.scrollTo({ top: msgs.scrollHeight, behavior: useSmooth ? "smooth" : "auto" });
+  }
+
+  function append(role, text, opts = {}) {
+    const stickToBottom = opts.forceScroll || shouldAutoScroll;
     const item = document.createElement("div");
     const isUser = role === "user";
     item.className = "aiw-msg " + (isUser ? "aiw-right" : "aiw-left");
@@ -102,7 +115,8 @@
     item.appendChild(bubble);
 
     msgs.appendChild(item);
-    msgs.scrollTop = msgs.scrollHeight;
+    renderedCount++;
+    if (stickToBottom) scrollToBottom(true);
     return p;
   }
 
@@ -120,9 +134,27 @@
   }
 
   function renderMessages(items) {
-    msgs.innerHTML = "";
-    items.forEach((item) => append(item.role, item.content));
-    msgs.scrollTop = msgs.scrollHeight;
+    const wasAtBottom = isAtBottom();
+
+    if (msgs.children.length > items.length) {
+      msgs.innerHTML = "";
+      renderedCount = 0;
+    }
+
+    items.forEach((item, idx) => {
+      const existing = msgs.children[idx];
+      if (existing) {
+        const bubbleText = existing.querySelector(".aiw-bubble p");
+        if (bubbleText && bubbleText.textContent !== item.content) {
+          bubbleText.textContent = item.content;
+        }
+      } else {
+        append(item.role, item.content, { forceScroll: wasAtBottom });
+      }
+    });
+
+    renderedCount = items.length;
+    if (wasAtBottom) scrollToBottom(true);
   }
 
   let pollTimer = null;
@@ -178,7 +210,7 @@
       }
       acc += t;
       assistantText.textContent = acc;
-      msgs.scrollTop = msgs.scrollHeight;
+      if (shouldAutoScroll) scrollToBottom(true);
     });
 
     es.addEventListener("waiting_for_human", () => {
@@ -247,6 +279,10 @@
       console.error(err);
       setStatus("Не удалось отправить сообщение");
     }
+  });
+
+  msgs.addEventListener("scroll", () => {
+    shouldAutoScroll = isAtBottom();
   });
 
   function escapeHtml(s) {
