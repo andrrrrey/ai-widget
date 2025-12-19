@@ -49,7 +49,7 @@
           <path d="M33.6 10.2c.4-1.5 2.5-1.5 2.9 0l1.5 5.3c.1.4.4.7.8.8l5.3 1.5c1.5.4 1.5 2.5 0 2.9l-5.3 1.5c-.4.1-.7.4-.8.8l-1.5 5.3c-.4 1.5-2.5 1.5-2.9 0l-1.5-5.3c-.1-.4-.4-.7-.8-.8L26 20.7c-1.5-.4-1.5-2.5 0-2.9l5.3-1.5c.4-.1.7-.4.8-.8l1.5-5.3z"/>
           <path d="M18.4 28.8c.3-1.1 1.9-1.1 2.2 0l1 3.6c.1.3.3.5.6.6l3.6 1c1.1.3 1.1 1.9 0 2.2l-3.6 1c-.3.1-.5.3-.6.6l-1 3.6c-.3 1.1-1.9 1.1-2.2 0l-1-3.6c-.1-.3-.3-.5-.6-.6l-3.6-1c-1.1-.3-1.1-1.9 0-2.2l3.6-1c.3-.1.5-.3.6-.6l1-3.6z"/>
         </svg>
-        <div class="aiw-title">Ask our AI anything</div>
+        <div class="aiw-title">Как я могу помочь?</div>
       </div>
 
       <div class="aiw-chat" aria-label="Chat messages" id="aiw-msgs"></div>
@@ -57,7 +57,7 @@
 
       <div class="aiw-composerWrap">
         <form class="aiw-composer" id="aiw-form" role="group" aria-label="Message composer">
-          <input class="aiw-input" id="aiw-input" placeholder="Ask me anything about your projects" autocomplete="off"/>
+          <input class="aiw-input" id="aiw-input" placeholder="Спросите что-нибудь..." autocomplete="off"/>
           <button class="aiw-send" type="submit" aria-label="Send">
             <svg viewBox="0 0 24 24" fill="none" stroke="rgba(130,140,155,.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M22 2L11 13" />
@@ -103,7 +103,7 @@
 
     const label = document.createElement("div");
     label.className = "aiw-label";
-    label.textContent = isUser ? "ME" : role === "human" ? "OPERATOR" : "OUR AI";
+    label.textContent = isUser ? "Я" : role === "human" ? "Оператор" : "ИИ";
 
     const bubble = document.createElement("div");
     bubble.className = "aiw-bubble";
