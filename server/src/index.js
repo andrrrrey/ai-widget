@@ -26,7 +26,7 @@ import {
 import { widgetCors } from "./lib/widgetCors.js";
 import { runAssistantStream, syncOperatorToThread } from "./lib/openai.js";
 
-dotenv.config();
+dotenv.config({ path: path.join(__dirname, "../.env") });
 
 const app = express();
 app.use(express.json({ limit: "2mb" }));
