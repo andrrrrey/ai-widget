@@ -95,15 +95,19 @@
     msgs.scrollTo({ top: msgs.scrollHeight, behavior: useSmooth ? "smooth" : "auto" });
   }
 
+  function setRole(el, role) {
+    const isUser = role === "user";
+    el.className = "aiw-msg " + (isUser ? "aiw-right" : "aiw-left");
+    const label = el.querySelector(".aiw-label");
+    if (label) label.textContent = isUser ? "Я" : role === "human" ? "Оператор" : "ИИ";
+  }
+  
   function append(role, text, opts = {}) {
     const stickToBottom = opts.forceScroll || shouldAutoScroll;
     const item = document.createElement("div");
-    const isUser = role === "user";
-    item.className = "aiw-msg " + (isUser ? "aiw-right" : "aiw-left");
-
+    item.className = "aiw-msg";
     const label = document.createElement("div");
     label.className = "aiw-label";
-    label.textContent = isUser ? "Я" : role === "human" ? "Оператор" : "ИИ";
 
     const bubble = document.createElement("div");
     bubble.className = "aiw-bubble";
@@ -114,6 +118,8 @@
     item.appendChild(label);
     item.appendChild(bubble);
 
+    setRole(item, role);
+    
     msgs.appendChild(item);
     renderedCount++;
     if (stickToBottom) scrollToBottom(true);
@@ -144,6 +150,7 @@
     items.forEach((item, idx) => {
       const existing = msgs.children[idx];
       if (existing) {
+        setRole(existing, item.role);          
         const bubbleText = existing.querySelector(".aiw-bubble p");
         if (bubbleText && bubbleText.textContent !== item.content) {
           bubbleText.textContent = item.content;
