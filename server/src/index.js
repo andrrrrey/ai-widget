@@ -360,6 +360,54 @@ app.get("/api/user/chats/:chatId/messages", requireUser, async (req, res) => {
   res.json({ items });
 });
 
+app.post("/api/user/chats/:chatId/takeover", requireUser, async (req, res) => {
+  const chat = await getChatById(req.params.chatId);
+  if (!chat) return res.status(404).json({ error: "chat_not_found" });
+
+  const project = await getProject(chat.project_id);
+  if (!project || project.owner_id !== req.auth.userId)
+    return res.status(404).json({ error: "chat_not_found" });
+
+  const updated = await setChatMode(chat.id, "human");
+  res.json({ chat: updated });
+});
+
+app.post("/api/user/chats/:chatId/release", requireUser, async (req, res) => {
+  const chat = await getChatById(req.params.chatId);
+  if (!chat) return res.status(404).json({ error: "chat_not_found" });
+
+  const project = await getProject(chat.project_id);
+  if (!project || project.owner_id !== req.auth.userId)
+    return res.status(404).json({ error: "chat_not_found" });
+
+  const updated = await setChatMode(chat.id, "assistant");
+  res.json({ chat: updated });
+});
+
+app.post("/api/user/chats/:chatId/message", requireUser, async (req, res) => {
+  const text = String(req.body?.text || "").trim();
+  if (!text) return res.status(400).json({ error: "empty" });
+
+  const chat = await getChatById(req.params.chatId);
+  if (!chat) return res.status(404).json({ error: "chat_not_found" });
+
+  const project = await getProject(chat.project_id);
+  if (!project || project.owner_id !== req.auth.userId)
+    return res.status(404).json({ error: "chat_not_found" });
+
+  await addMessage({ chatId: chat.id, role: "human", content: text });
+
+  try {
+    if (project?.openai_api_key) {
+      await syncOperatorToThread(project.openai_api_key, chat.thread_id, text);
+    }
+  } catch (e) {
+    console.warn("syncOperatorToThread error:", e?.message || e);
+  }
+
+  res.json({ ok: true });
+});
+
 app.post("/api/admin/chats/:chatId/takeover", requireAdmin, async (req, res) => {
   const chat = await setChatMode(req.params.chatId, "human");
   res.json({ chat });

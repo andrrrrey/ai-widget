@@ -14,6 +14,10 @@ function projectApiBase(){
   return isAdmin() ? "/api/admin/projects" : "/api/user/projects";
 }
 
+function chatApiBase(){
+  return isAdmin() ? "/api/admin/chats" : "/api/user/chats";
+}
+
 async function fetchAssistantInstructions(projectId){
   if(!isAdmin()) return null;
   try {
@@ -54,12 +58,6 @@ function applyRoleVisibility(){
   document.querySelectorAll(".adminOnly").forEach(el => {
     el.style.display = isAdmin() ? "" : "none";
   });
-
-  const humanForm = $("#humanForm");
-  if(humanForm) humanForm.style.display = isAdmin() ? "flex" : "none";
-
-  const releaseBtn = $("#btnRelease");
-  if(releaseBtn) releaseBtn.style.display = isAdmin() ? "" : "none";
 }
 
 async function login(){
@@ -275,23 +273,20 @@ function startPolling(){
 }
 
 async function takeover(){
-  if(!isAdmin()) return;
   if(!selectedChatId) return;
-  await api(`/api/admin/chats/${selectedChatId}/takeover`, { method:"POST" });
+  await api(`${chatApiBase()}/${selectedChatId}/takeover`, { method:"POST" });
   await refreshChats();
   await refreshChatView();
 }
 
 async function release(){
-  if(!isAdmin()) return;
   if(!selectedChatId) return;
-  await api(`/api/admin/chats/${selectedChatId}/release`, { method:"POST" });
+  await api(`${chatApiBase()}/${selectedChatId}/release`, { method:"POST" });
   await refreshChats();
   await refreshChatView();
 }
 
 async function sendHuman(e){
-  if(!isAdmin()) return;
   e.preventDefault();
   if(!selectedChatId) return;
   const textEl = $("#humanText");
@@ -305,7 +300,7 @@ async function sendHuman(e){
     return;
   }
   
-  await api(`/api/admin/chats/${selectedChatId}/message`, {
+  await api(`${chatApiBase()}/${selectedChatId}/message`, {
     method:"POST",
     headers:{ "Content-Type":"application/json" },
     body: JSON.stringify({ text })
