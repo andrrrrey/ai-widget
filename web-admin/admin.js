@@ -142,6 +142,8 @@ async function loadProject(projectId){
   }
   $("#instructions").value = instructions;
   $("#origins").value = (p.allowed_origins || []).join("\n");
+
+  renderTelegramSection(p);
 }
 
 async function saveProject(){
@@ -166,6 +168,74 @@ async function saveProject(){
 
   $("#saveOk").textContent = "Сохранено";
   setTimeout(()=> $("#saveOk").textContent = "", 1400);
+}
+
+function renderTelegramSection(project){
+  const statusEl = $("#telegramStatus");
+  const infoEl = $("#telegramInfo");
+  const errEl = $("#telegramErr");
+  const okEl = $("#telegramOk");
+  errEl.textContent = "";
+  okEl.textContent = "";
+
+  if(project.telegram_chat_id){
+    statusEl.textContent = "Подключено";
+    statusEl.className = "pill";
+    const connectedAt = project.telegram_connected_at
+      ? new Date(project.telegram_connected_at).toLocaleString()
+      : "";
+    infoEl.textContent = `Чат ID: ${project.telegram_chat_id}${connectedAt ? ` • с ${connectedAt}` : ""}`;
+  } else {
+    statusEl.textContent = "Не подключено";
+    statusEl.className = "pill muted";
+    infoEl.textContent = "Получите код в Telegram-боте AI Widget и вставьте его здесь.";
+  }
+}
+
+async function linkTelegram(){
+  if(!selectedProjectId) return;
+  const code = $("#telegramCode").value.trim();
+  $("#telegramErr").textContent = "";
+  $("#telegramOk").textContent = "";
+  if(!code){
+    $("#telegramErr").textContent = "Введите код из бота";
+    return;
+  }
+
+  try {
+    await api(`${projectApiBase()}/${selectedProjectId}`, {
+      method:"PATCH",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ telegram_code: code })
+    });
+    $("#telegramOk").textContent = "Телеграм подключён";
+    $("#telegramCode").value = "";
+    await loadProject(selectedProjectId);
+  } catch(err){
+    const codeName = err?.data?.error || err?.message || "api_error";
+    if(codeName === "invalid_telegram_code"){
+      $("#telegramErr").textContent = "Неверный или использованный код";
+    } else {
+      $("#telegramErr").textContent = "Не удалось подключить Телеграм";
+    }
+  }
+}
+
+async function unlinkTelegram(){
+  if(!selectedProjectId) return;
+  $("#telegramErr").textContent = "";
+  $("#telegramOk").textContent = "";
+  try {
+    await api(`${projectApiBase()}/${selectedProjectId}`, {
+      method:"PATCH",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ unlink_telegram: true })
+    });
+    $("#telegramOk").textContent = "Телеграм отключён";
+    await loadProject(selectedProjectId);
+  } catch(err){
+    $("#telegramErr").textContent = "Не удалось отключить";
+  }
 }
 
 async function deleteProject(){
@@ -398,6 +468,8 @@ $("#humanForm").addEventListener("submit", sendHuman);
 $("#btnOpenSettings").addEventListener("click", ()=> showPage("settings"));
 $("#btnBackToChats").addEventListener("click", ()=> showPage("chats"));
 $("#btnOpenUsers").addEventListener("click", ()=>{ showPage("users"); refreshUsers().catch(()=>{}); });
+$("#btnLinkTelegram").addEventListener("click", ()=> linkTelegram().catch(()=>{}));
+$("#btnUnlinkTelegram").addEventListener("click", ()=> unlinkTelegram().catch(()=>{}));
 $("#userForm").addEventListener("submit", (e)=> createUserFromForm(e).catch(()=>{}));
 $("#btnBackFromUsers").addEventListener("click", ()=> showPage("chats"));
 

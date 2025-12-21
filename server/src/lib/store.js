@@ -19,11 +19,19 @@ export async function listUsers() {
   return await sql.many(`SELECT id, email, role, created_at FROM users ORDER BY created_at DESC`);
 }
 
-export async function createProject({ name, assistantId, openaiApiKey, instructions, allowedOrigins, ownerId = null }) {
+export async function createProject({
+  name,
+  assistantId,
+  openaiApiKey,
+  instructions,
+  allowedOrigins,
+  ownerId = null,
+  telegramChatId = null,
+}) {
   const id = uuidv4();
   const row = await sql.one(
-    `INSERT INTO projects (id, name, assistant_id, openai_api_key, instructions, allowed_origins, owner_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+    `INSERT INTO projects (id, name, assistant_id, openai_api_key, instructions, allowed_origins, owner_id, telegram_chat_id, telegram_connected_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
     [
       id,
       name || "New Project",
@@ -32,6 +40,8 @@ export async function createProject({ name, assistantId, openaiApiKey, instructi
       instructions || "",
       Array.isArray(allowedOrigins) ? allowedOrigins : [],
       ownerId || null,
+      telegramChatId || null,
+      telegramChatId ? new Date() : null,
     ]
   );
   return row;
@@ -58,12 +68,28 @@ export async function updateProject(projectId, patch) {
   const instructions = patch.instructions ?? p.instructions;
   const allowedOrigins = patch.allowed_origins ?? p.allowed_origins;
   const ownerId = patch.owner_id ?? p.owner_id;
+  const telegramChatId = Object.hasOwn(patch, "telegram_chat_id")
+    ? patch.telegram_chat_id
+    : p.telegram_chat_id;
+  const telegramConnectedAt = Object.hasOwn(patch, "telegram_connected_at")
+    ? patch.telegram_connected_at
+    : p.telegram_connected_at;
 
   return await sql.one(
     `UPDATE projects
-     SET name=$2, assistant_id=$3, openai_api_key=$4, instructions=$5, allowed_origins=$6, owner_id=$7, updated_at=NOW()
+     SET name=$2, assistant_id=$3, openai_api_key=$4, instructions=$5, allowed_origins=$6, owner_id=$7, telegram_chat_id=$8, telegram_connected_at=$9, updated_at=NOW()
      WHERE id=$1 RETURNING *`,
-    [projectId, name, assistantId, openaiApiKey, instructions, allowedOrigins, ownerId]
+    [
+      projectId,
+      name,
+      assistantId,
+      openaiApiKey,
+      instructions,
+      allowedOrigins,
+      ownerId,
+      telegramChatId,
+      telegramConnectedAt,
+    ]
   );
 }
 

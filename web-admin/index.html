@@ -152,6 +152,26 @@
               <textarea id="instructions" rows="6" placeholder="Инструкция для ассистента..."></textarea>
             </div>
 
+            <div class="formGrid" style="align-items:flex-end">
+              <div>
+                <label class="muted">Уведомления в Telegram</label>
+                <div id="telegramStatus" class="pill muted">Не подключено</div>
+                <div class="muted" id="telegramInfo" style="margin-top:6px"></div>
+              </div>
+              <div>
+                <label class="muted">Telegram код (из бота)</label>
+                <div class="row tight">
+                  <input id="telegramCode" placeholder="секретный код" />
+                  <button id="btnLinkTelegram" type="button">Привязать</button>
+                  <button id="btnUnlinkTelegram" type="button" class="ghost">Отвязать</button>
+                </div>
+                <div class="row" style="justify-content:space-between;margin-top:6px">
+                  <span id="telegramErr" class="err"></span>
+                  <span id="telegramOk" class="ok"></span>
+                </div>
+              </div>
+            </div>
+
             <div class="row">
               <button id="btnSaveProject">Сохранить</button>
               <button id="btnDeleteProject" class="ghost">Удалить проект</button>

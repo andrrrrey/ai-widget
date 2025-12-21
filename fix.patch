@@ -1,80 +1,983 @@
-diff --git a/server/src/lib/widgetCors.js b/server/src/lib/widgetCors.js
-index 3632dcf1c0e93e63843a52d9ccc24ee1a1fd5cd3..2ffc1edf4d912f98818eb7e12767872a7e6948ae 100644
---- a/server/src/lib/widgetCors.js
-+++ b/server/src/lib/widgetCors.js
-@@ -1,39 +1,69 @@
- import { getProject } from "./store.js";
+diff --git a/README.md b/README.md
+index d8142c067499890da37f6746b1afe19e3acf644d..bb10cafc1fdae0bddbe13eccc01810094740f6f2 100644
+--- a/README.md
++++ b/README.md
+@@ -37,107 +37,149 @@ sudo -u postgres psql
+ ```
+ ```sql
+ CREATE USER aiwidget WITH PASSWORD 'STRONG_PASSWORD';
+ CREATE DATABASE aiwidget OWNER aiwidget;
+ \q
+ ```
  
-+function normalizeOrigin(value) {
-+  if (!value) return null;
+ ### 1.3 Код
+ ```bash
+ sudo mkdir -p /var/www
+ sudo cp -r ./ai-widget /var/www/ai-widget
+ cd /var/www/ai-widget/server
+ npm i
+ ```
+ 
+ ### 1.4 ENV
+ ```bash
+ cp .env.example .env
+ nano .env
+ ```
+ 
+ Заполните:
+ - DATABASE_URL
+ - ADMIN_PASSWORD
+ - JWT_SECRET
++- TELEGRAM_BOT_TOKEN (для телеграм-бота уведомлений, опционально)
+ 
+ ⚠️ `OPENAI_API_KEY` больше не нужен в .env — ключи задаются по каждому Project в админке.
+ 
+ ### 1.5 Схема БД
+ ```bash
+ psql "postgresql://aiwidget:STRONG_PASSWORD@localhost:5432/aiwidget" -f ./sql/001_init.sql
+ ```
+ 
+ ### 1.5.1 Обновление до версии с пользователями и владельцами проектов
+ 
+ Если у вас уже развёрнут проект, примените новый миграционный файл, чтобы добавить таблицу `users` и связь проектов с владельцами:
+ 
+ ```bash
+ psql "postgresql://aiwidget:STRONG_PASSWORD@localhost:5432/aiwidget" -f ./sql/002_users_and_ownership.sql
+ ```
+ 
+ После этого можно входить под администратором (логин `admin`, пароль из `ADMIN_PASSWORD`) и создавать учётные записи пользователей прямо в админке.
+ 
++### 1.5.2 Обновление до версии с уведомлениями в Telegram
 +
-+  const trimmed = String(value).trim().replace(/\/+$/, "");
++Добавляет таблицу кодов привязки и поля для связи проекта с Telegram-чатом. Примените миграцию:
++
++```bash
++psql "postgresql://aiwidget:STRONG_PASSWORD@localhost:5432/aiwidget" -f ./sql/003_telegram_notifications.sql
++```
++
+ ### 1.6 Запуск
+ ```bash
+ npm run start:prod
+ pm2 start src/index.js --name ai-widget
+ pm2 save
+ pm2 startup
+ ```
+ 
+ Проверка:
+ ```bash
+ pm2 ls
+ curl -s http://127.0.0.1:3000/health
+ ```
+ 
+ ---
+ 
+ ## 2) Nginx + SSL
+ 
+ Скопируйте `deploy/nginx-loginov.futuguru.com.conf` в:
+ `/etc/nginx/sites-available/loginov.futuguru.com`
+ 
+ ```bash
+ sudo ln -s /etc/nginx/sites-available/loginov.futuguru.com /etc/nginx/sites-enabled/loginov.futuguru.com
+ sudo nginx -t
+ sudo systemctl reload nginx
+ sudo certbot --nginx -d loginov.futuguru.com
+ ```
+ 
+ ---
+ 
+ ## 3) Админка
+ 
+ - https://loginov.futuguru.com/admin/
+ - Логин: `admin`
+ - Пароль: `ADMIN_PASSWORD` из `.env`
+ 
+ В проекте (Project) обязательно заполнить:
+ - OpenAI API key (клиента)
+ - assistant_id (клиента)
+ - allowed_origins (домены сайтов клиента)
+ 
++### Telegram уведомления о новых чатах
++
++1. Запустите телеграм-бота:
++
++```bash
++cd /var/www/ai-widget/server
++npm run bot
++
++# Рекомендуется держать бота как сервис, чтобы он перезапускался после
++# рестартов сервера. Например, через pm2:
++# pm2 start src/telegram-bot.js --name ai-widget-bot
++# pm2 save && pm2 startup
++
++# Или через systemd (service файл положите в /etc/systemd/system/ai-widget-bot.service):
++# [Unit]
++# Description=AI Widget Telegram bot
++# After=network.target
++# 
++# [Service]
++# WorkingDirectory=/var/www/ai-widget/server
++# ExecStart=/usr/bin/node src/telegram-bot.js
++# Restart=on-failure
++# Environment=NODE_ENV=production
++# Environment=TELEGRAM_BOT_TOKEN=XXX
++# 
++# [Install]
++# WantedBy=multi-user.target
++```
++
++2. Напишите боту `/start` или `/code`, получите секретный код.
++3. Откройте админку → Настройки проекта → поле «Telegram код», вставьте секрет и нажмите «Привязать».
++4. Теперь бот будет присылать уведомления «На проекте открыт новый диалог…» только в этот Telegram-аккаунт.
++
+ ---
+ 
+ ## 4) Вставка виджета на сайт клиента
+ 
+ ```html
+ <script
+   src="https://loginov.futuguru.com/widget/widget.js"
+   data-project-id="PROJECT_UUID_ИЗ_АДМИНКИ"
+   data-title="Напишите нам"
+   data-position="right"
+ ></script>
+ ```
+ 
+ Если домен сайта клиента не добавлен в allowed_origins — виджет получит 403 origin_not_allowed.
+ 
+ ---
+ 
+ ## 5) Важный нюанс по правам
+ 
+ `openai_api_key` проекта должен иметь доступ к указанному `assistant_id` (обычно это один и тот же аккаунт/организация).
+ Иначе OpenAI вернёт ошибку доступа.
+ 
+ ---
+diff --git a/server/.env.example b/server/.env.example
+index 3f3f78f2e460adcc0c8eb1b12abca693b2fbd2bd..7b69521eb1e43e1d2725566f7e8d68658a048b95 100644
+--- a/server/.env.example
++++ b/server/.env.example
+@@ -1,9 +1,10 @@
+ PORT=3000
+ BASE_URL=https://loginov.futuguru.com
+ 
+ DATABASE_URL=postgresql://aiwidget:STRONG_PASSWORD@localhost:5432/aiwidget
+ 
+ 
+ ADMIN_LOGIN=admin
+ ADMIN_PASSWORD=change-me-very-strong
+ JWT_SECRET=change-me-very-strong-jwt-secret
++TELEGRAM_BOT_TOKEN=telegram-bot-token
+diff --git a/server/package.json b/server/package.json
+index 1dca0c567bee405760600dca787483290f30ec02..c49693ce522ff822069c15359ed20f16584a1c4a 100644
+--- a/server/package.json
++++ b/server/package.json
+@@ -1,20 +1,22 @@
+ {
+   "name": "ai-widget-server",
+   "version": "2.0.0",
+   "private": true,
+   "type": "module",
+   "scripts": {
+     "start": "node src/index.js",
+     "start:prod": "NODE_ENV=production node src/index.js",
+-    "dev": "node --watch src/index.js"
++    "dev": "node --watch src/index.js",
++    "bot": "node src/telegram-bot.js"
+   },
+   "dependencies": {
+     "cookie-parser": "^1.4.6",
+     "dotenv": "^16.4.5",
+     "express": "^4.19.2",
+     "jsonwebtoken": "^9.0.2",
++    "node-telegram-bot-api": "^0.66.0",
+     "openai": "^4.70.0",
+     "pg": "^8.12.0",
+     "uuid": "^9.0.1"
+   }
+ }
+\ No newline at end of file
+diff --git a/server/sql/003_telegram_notifications.sql b/server/sql/003_telegram_notifications.sql
+new file mode 100644
+index 0000000000000000000000000000000000000000..75ede2955c18c32a50c4132ebbc59496b9319052
+--- /dev/null
++++ b/server/sql/003_telegram_notifications.sql
+@@ -0,0 +1,15 @@
++-- 003_telegram_notifications.sql — Telegram bot link codes and project binding
++
++CREATE TABLE IF NOT EXISTS telegram_link_tokens (
++  secret text PRIMARY KEY,
++  chat_id text NOT NULL,
++  username text NULL,
++  created_at timestamptz NOT NULL DEFAULT NOW(),
++  used_at timestamptz NULL
++);
++
++ALTER TABLE projects
++  ADD COLUMN IF NOT EXISTS telegram_chat_id text NULL,
++  ADD COLUMN IF NOT EXISTS telegram_connected_at timestamptz NULL;
++
++CREATE INDEX IF NOT EXISTS projects_telegram_idx ON projects(telegram_chat_id);
+diff --git a/server/src/index.js b/server/src/index.js
+index 3fd4157412aae90f5bf92006c5c2caac9c282325..63ae291a5468a88e44aee3b36a3a96f0bdaf31f7 100644
+--- a/server/src/index.js
++++ b/server/src/index.js
+@@ -4,85 +4,88 @@ import path from "path";
+ import { fileURLToPath } from "url";
+ import dotenv from "dotenv";
+ 
+ import { ensureSchema, pool } from "./lib/db.js";
+ import { requireAdmin, requireUser, loginHandler, logoutHandler, hashPassword } from "./lib/auth.js";
+ import {
+   createUser,
+   listUsers,
+   findUserByEmail,
+   createProject,
+   listProjects,
+   getProject,
+   updateProject,
+   deleteProject,
+   createChat,
+   getChatById,
+   listChats,
+   listMessages,
+   addMessage,
+   setChatMode,
+   touchChat,
+ } from "./lib/store.js";
+ import { widgetCors } from "./lib/widgetCors.js";
+ import { fetchAssistantInstructions, runAssistantStream, syncOperatorToThread } from "./lib/openai.js";
+ import { getChatDisplayName } from "./lib/chatNames.js";
++import { consumeTelegramSecret, notifyProjectAboutNewChat } from "./lib/telegram.js";
+ 
+ dotenv.config({ path: "/var/www/ai-widget/server/.env" });
+ 
+ const app = express();
+ app.use(express.json({ limit: "2mb" }));
+ app.use(express.urlencoded({ extended: true }));
+ app.use(cookieParser());
+ 
+ const __filename = fileURLToPath(import.meta.url);
+ const __dirname = path.dirname(__filename);
+ 
+ // Static: widget + admin
+ app.use("/widget", express.static(path.join(__dirname, "../../widget")));
+ app.use("/admin", express.static(path.join(__dirname, "../../web-admin")));
+ 
+ app.get("/health", (req, res) => res.json({ ok: true, ts: Date.now() }));
+ 
+ /**
+  * WIDGET API (CORS allowlist per project)
+  */
+ app.options("/api/widget/:projectId/*", widgetCors);
+ 
+ app.post("/api/widget/:projectId/chat/start", widgetCors, async (req, res) => {
+   const { projectId } = req.params;
+   const { visitorId } = req.body || {};
+   const project = await getProject(projectId);
+   if (!project) return res.status(404).json({ error: "project_not_found" });
+   if (!project.openai_api_key) return res.status(400).json({ error: "openai_api_key_missing" });
+ 
+   const chat = await createChat({
+     projectId,
+     visitorId: visitorId || null,
+     openaiApiKey: project.openai_api_key,
+   });
+ 
++  notifyProjectAboutNewChat(project, chat);
++
+   res.json({ chatId: chat.id, mode: chat.mode });
+ });
+ 
+ app.get("/api/widget/:projectId/chat/:chatId/messages", widgetCors, async (req, res) => {
+   const { projectId, chatId } = req.params;
+   const chat = await getChatById(chatId);
+   if (!chat || chat.project_id !== projectId) return res.status(404).json({ error: "chat_not_found" });
+   const items = await listMessages(chatId);
+   res.json({ items });
+ });
+ 
+ app.get("/api/widget/:projectId/chat/:chatId/stream", widgetCors, async (req, res) => {
+   const { projectId, chatId } = req.params;
+   const message = String(req.query.message || "").trim();
+   if (!message) return res.status(400).json({ error: "empty_message" });
+ 
+   const chat = await getChatById(chatId);
+   if (!chat || chat.project_id !== projectId) return res.status(404).json({ error: "chat_not_found" });
+ 
+   // SSE headers
+   res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+   res.setHeader("Cache-Control", "no-cache, no-transform");
+   res.setHeader("Connection", "keep-alive");
+   res.flushHeaders?.();
+ 
+@@ -232,50 +235,65 @@ app.post("/api/user/projects", requireUser, async (req, res) => {
+   });
+ 
+   res.json({ project });
+ });
+ 
+ app.get("/api/user/projects/:projectId", requireUser, async (req, res) => {
+   const project = await getProject(req.params.projectId);
+   if (!project || project.owner_id !== req.auth.userId)
+     return res.status(404).json({ error: "project_not_found" });
+   res.json({ project });
+ });
+ 
+ app.patch("/api/user/projects/:projectId", requireUser, async (req, res) => {
+   const project = await getProject(req.params.projectId);
+   if (!project || project.owner_id !== req.auth.userId)
+     return res.status(404).json({ error: "project_not_found" });
+ 
+   const patch = {};
+ 
+   if (typeof req.body?.name === "string") patch.name = req.body.name;
+   if (typeof req.body?.assistant_id === "string") patch.assistant_id = req.body.assistant_id;
+   if (typeof req.body?.openai_api_key === "string") patch.openai_api_key = req.body.openai_api_key;
+   if (typeof req.body?.instructions === "string") patch.instructions = req.body.instructions;
+   if (Array.isArray(req.body?.allowed_origins)) patch.allowed_origins = req.body.allowed_origins.map(String);
+ 
++  if (typeof req.body?.telegram_code === "string") {
++    const code = req.body.telegram_code.trim();
++    if (code) {
++      const token = await consumeTelegramSecret(code);
++      if (!token) return res.status(400).json({ error: "invalid_telegram_code" });
++      patch.telegram_chat_id = token.chat_id;
++      patch.telegram_connected_at = new Date();
++    }
++  }
++
++  if (req.body?.unlink_telegram === true) {
++    patch.telegram_chat_id = null;
++    patch.telegram_connected_at = null;
++  }
++
+   const updated = await updateProject(req.params.projectId, patch);
+   res.json({ project: updated });
+ });
+ 
+ app.delete("/api/user/projects/:projectId", requireUser, async (req, res) => {
+   const project = await getProject(req.params.projectId);
+   if (!project || project.owner_id !== req.auth.userId)
+     return res.status(404).json({ error: "project_not_found" });
+   await deleteProject(req.params.projectId);
+   res.json({ ok: true });
+ });
+ 
+ app.get("/api/admin/projects/:projectId", requireAdmin, async (req, res) => {
+   const project = await getProject(req.params.projectId);
+   if (!project) return res.status(404).json({ error: "project_not_found" });
+   res.json({ project });
+ });
+ 
+ app.get(
+   "/api/admin/projects/:projectId/assistant-instructions",
+   requireAdmin,
+   async (req, res) => {
+     const project = await getProject(req.params.projectId);
+     if (!project) return res.status(404).json({ error: "project_not_found" });
+     if (!project.assistant_id) return res.status(400).json({ error: "assistant_id_missing" });
+@@ -287,50 +305,65 @@ app.get(
+         assistantId: project.assistant_id,
+       });
+       res.json({ instructions });
+     } catch (err) {
+       console.warn("assistant instructions fetch error", err?.message || err);
+       res
+         .status(500)
+         .json({ error: "failed_to_fetch_assistant", message: err?.message || "" });
+     }
+   }
+ );
+ 
+ app.patch("/api/admin/projects/:projectId", requireAdmin, async (req, res) => {
+   const patch = {};
+ 
+   if (typeof req.body?.name === "string") patch.name = req.body.name;
+   if (typeof req.body?.assistant_id === "string") patch.assistant_id = req.body.assistant_id;
+ 
+   // ✅ ВОТ ЭТА СТРОКА РЕШАЕТ ПРОБЛЕМУ: позволяет сохранять API key при PATCH
+   if (typeof req.body?.openai_api_key === "string") patch.openai_api_key = req.body.openai_api_key;
+ 
+   if (typeof req.body?.instructions === "string") patch.instructions = req.body.instructions;
+   if (Array.isArray(req.body?.allowed_origins)) patch.allowed_origins = req.body.allowed_origins.map(String);
+   if (typeof req.body?.owner_id === "string") patch.owner_id = req.body.owner_id;
+ 
++  if (typeof req.body?.telegram_code === "string") {
++    const code = req.body.telegram_code.trim();
++    if (code) {
++      const token = await consumeTelegramSecret(code);
++      if (!token) return res.status(400).json({ error: "invalid_telegram_code" });
++      patch.telegram_chat_id = token.chat_id;
++      patch.telegram_connected_at = new Date();
++    }
++  }
++
++  if (req.body?.unlink_telegram === true) {
++    patch.telegram_chat_id = null;
++    patch.telegram_connected_at = null;
++  }
++
+   const project = await updateProject(req.params.projectId, patch);
+   if (!project) return res.status(404).json({ error: "project_not_found" });
+   res.json({ project });
+ });
+ 
+ // Chats and messages (scoped by project)
+ app.get("/api/admin/projects/:projectId/chats", requireAdmin, async (req, res) => {
+   const { projectId } = req.params;
+   const status = req.query.status ? String(req.query.status) : null;
+   const mode = req.query.mode ? String(req.query.mode) : null;
+   const items = await listChats({ projectId, status, mode });
+   const withNames = items.map((chat) => ({
+     ...chat,
+     display_name: getChatDisplayName(chat.id),
+   }));
+   res.json({ items: withNames });
+ });
+ 
+ app.get("/api/user/projects/:projectId/chats", requireUser, async (req, res) => {
+   const { projectId } = req.params;
+   const project = await getProject(projectId);
+   if (!project || project.owner_id !== req.auth.userId)
+     return res.status(404).json({ error: "project_not_found" });
+ 
+   const status = req.query.status ? String(req.query.status) : null;
+diff --git a/server/src/lib/store.js b/server/src/lib/store.js
+index d09d9803f7646e7782fc43b67f623cb23176ac8e..0dc5e1d1a535c0c7b3dbff21b17ee4830016ecc5 100644
+--- a/server/src/lib/store.js
++++ b/server/src/lib/store.js
+@@ -1,91 +1,117 @@
+ import { sql } from "./db.js";
+ import { v4 as uuidv4 } from "uuid";
+ import { ensureThread } from "./openai.js";
+ 
+ export async function createUser({ email, passwordHash, role = "user" }) {
+   const row = await sql.one(
+     `INSERT INTO users (id, email, password_hash, role)
+      VALUES ($1,$2,$3,$4) RETURNING id, email, role, created_at`,
+     [uuidv4(), email, passwordHash, role]
+   );
+   return row;
+ }
+ 
+ export async function findUserByEmail(email) {
+   return await sql.oneOrNone(`SELECT * FROM users WHERE email=$1`, [email]);
+ }
+ 
+ export async function listUsers() {
+   return await sql.many(`SELECT id, email, role, created_at FROM users ORDER BY created_at DESC`);
+ }
+ 
+-export async function createProject({ name, assistantId, openaiApiKey, instructions, allowedOrigins, ownerId = null }) {
++export async function createProject({
++  name,
++  assistantId,
++  openaiApiKey,
++  instructions,
++  allowedOrigins,
++  ownerId = null,
++  telegramChatId = null,
++}) {
+   const id = uuidv4();
+   const row = await sql.one(
+-    `INSERT INTO projects (id, name, assistant_id, openai_api_key, instructions, allowed_origins, owner_id)
+-     VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
++    `INSERT INTO projects (id, name, assistant_id, openai_api_key, instructions, allowed_origins, owner_id, telegram_chat_id, telegram_connected_at)
++     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+     [
+       id,
+       name || "New Project",
+       assistantId || "",
+       openaiApiKey || "",
+       instructions || "",
+       Array.isArray(allowedOrigins) ? allowedOrigins : [],
+       ownerId || null,
++      telegramChatId || null,
++      telegramChatId ? new Date() : null,
+     ]
+   );
+   return row;
+ }
+ 
+ export async function listProjects({ ownerId = null } = {}) {
+   if (ownerId) {
+     return await sql.many("SELECT * FROM projects WHERE owner_id=$1 ORDER BY created_at DESC", [ownerId]);
+   }
+   return await sql.many("SELECT * FROM projects ORDER BY created_at DESC");
+ }
+ 
+ export async function getProject(projectId) {
+   return await sql.oneOrNone("SELECT * FROM projects WHERE id=$1", [projectId]);
+ }
+ 
+ export async function updateProject(projectId, patch) {
+   const p = await getProject(projectId);
+   if (!p) return null;
+ 
+   const name = patch.name ?? p.name;
+   const assistantId = patch.assistant_id ?? p.assistant_id;
+   const openaiApiKey = patch.openai_api_key ?? p.openai_api_key;
+   const instructions = patch.instructions ?? p.instructions;
+   const allowedOrigins = patch.allowed_origins ?? p.allowed_origins;
+   const ownerId = patch.owner_id ?? p.owner_id;
++  const telegramChatId = Object.hasOwn(patch, "telegram_chat_id")
++    ? patch.telegram_chat_id
++    : p.telegram_chat_id;
++  const telegramConnectedAt = Object.hasOwn(patch, "telegram_connected_at")
++    ? patch.telegram_connected_at
++    : p.telegram_connected_at;
+ 
+   return await sql.one(
+     `UPDATE projects
+-     SET name=$2, assistant_id=$3, openai_api_key=$4, instructions=$5, allowed_origins=$6, owner_id=$7, updated_at=NOW()
++     SET name=$2, assistant_id=$3, openai_api_key=$4, instructions=$5, allowed_origins=$6, owner_id=$7, telegram_chat_id=$8, telegram_connected_at=$9, updated_at=NOW()
+      WHERE id=$1 RETURNING *`,
+-    [projectId, name, assistantId, openaiApiKey, instructions, allowedOrigins, ownerId]
++    [
++      projectId,
++      name,
++      assistantId,
++      openaiApiKey,
++      instructions,
++      allowedOrigins,
++      ownerId,
++      telegramChatId,
++      telegramConnectedAt,
++    ]
+   );
+ }
+ 
+ export async function deleteProject(projectId) {
+   const existing = await getProject(projectId);
+   if (!existing) return false;
+   await sql.exec("DELETE FROM projects WHERE id=$1", [projectId]);
+   return true;
+ }
+ 
+ export async function createChat({ projectId, visitorId, openaiApiKey }) {
+   const threadId = await ensureThread(openaiApiKey);
+   const id = uuidv4();
+ 
+   const row = await sql.one(
+     `INSERT INTO chats (id, project_id, thread_id, mode, status, visitor_id)
+      VALUES ($1,$2,$3,'assistant','open',$4) RETURNING *`,
+     [id, projectId, threadId, visitorId || null]
+   );
+   return row;
+ }
+ 
+ export async function getChatById(chatId) {
+   return await sql.oneOrNone("SELECT * FROM chats WHERE id=$1", [chatId]);
+ }
+diff --git a/server/src/lib/telegram.js b/server/src/lib/telegram.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..dba6dec429c2d20a1738c39d2484552d29f43245
+--- /dev/null
++++ b/server/src/lib/telegram.js
+@@ -0,0 +1,79 @@
++import crypto from "crypto";
++
++import { sql } from "./db.js";
++
++const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
++
++function randomSecret() {
++  return crypto.randomBytes(5).toString("hex");
++}
++
++export function isTelegramConfigured() {
++  return Boolean(TELEGRAM_TOKEN);
++}
++
++export async function issueTelegramSecret({ chatId, username = null }) {
++  if (!chatId) throw new Error("chat_id_required");
++
++  let attempts = 0;
++  while (attempts < 5) {
++    const secret = randomSecret();
++    try {
++      await sql.exec(
++        `INSERT INTO telegram_link_tokens (secret, chat_id, username)
++         VALUES ($1,$2,$3)`,
++        [secret, String(chatId), username || null]
++      );
++      return secret;
++    } catch (err) {
++      // retry on conflict
++      attempts += 1;
++      if (attempts >= 5) throw err;
++    }
++  }
++  throw new Error("failed_to_generate_secret");
++}
++
++export async function consumeTelegramSecret(secret) {
++  if (!secret) return null;
++  return await sql.oneOrNone(
++    `UPDATE telegram_link_tokens
++       SET used_at=NOW()
++     WHERE secret=$1 AND used_at IS NULL
++     RETURNING chat_id, username, created_at`,
++    [secret]
++  );
++}
++
++export async function sendTelegramMessage(chatId, text) {
++  if (!TELEGRAM_TOKEN || !chatId || !text) return false;
++
++  const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
++  const body = { chat_id: chatId, text };
++  const r = await fetch(url, {
++    method: "POST",
++    headers: { "Content-Type": "application/json" },
++    body: JSON.stringify(body),
++  });
++
++  if (!r.ok) {
++    const payload = await r.text();
++    throw new Error(`telegram_error_${r.status}: ${payload}`);
++  }
++  return true;
++}
++
++export async function notifyProjectAboutNewChat(project, chat) {
++  if (!project?.telegram_chat_id || !isTelegramConfigured()) return;
++  const title = project?.name ? `"${project.name}"` : "вашем сайте";
++  const message =
++    `На проекте ${title} открыт новый диалог.\n` +
++    `ID чата: ${chat?.id || "неизвестен"}.\n` +
++    `Скорее посмотрите в админке.`;
 +
 +  try {
-+    const u = new URL(trimmed);
-+    return { origin: u.origin.toLowerCase(), host: u.host.toLowerCase() };
++    await sendTelegramMessage(project.telegram_chat_id, message);
 +  } catch (err) {
-+    // Not a full URL (e.g. "example.com") — fallback to host-only comparison
-+    return { origin: null, host: trimmed.toLowerCase() };
++    console.warn("telegram notify failed", err?.message || err);
++  }
++}
+diff --git a/server/src/telegram-bot.js b/server/src/telegram-bot.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..6fb7a8631a01cd05074459c083a8d8e4e94adb14
+--- /dev/null
++++ b/server/src/telegram-bot.js
+@@ -0,0 +1,63 @@
++import dotenv from "dotenv";
++import TelegramBot from "node-telegram-bot-api";
++
++import { ensureSchema } from "./lib/db.js";
++import { issueTelegramSecret, isTelegramConfigured } from "./lib/telegram.js";
++
++dotenv.config({ path: "/var/www/ai-widget/server/.env" });
++
++const token = process.env.TELEGRAM_BOT_TOKEN || "";
++
++if (!token) {
++  console.error("[telegram-bot] TELEGRAM_BOT_TOKEN is not set in .env");
++  process.exit(1);
++}
++
++if (!isTelegramConfigured()) {
++  console.error("[telegram-bot] Telegram bot token is missing");
++  process.exit(1);
++}
++
++const bot = new TelegramBot(token, { polling: true });
++
++await ensureSchema();
++
++async function sendNewSecret(chat) {
++  const secret = await issueTelegramSecret({
++    chatId: chat.id,
++    username: chat?.username || null,
++  });
++  const message =
++    `Привет! Это бот уведомлений AI Widget.\n` +
++    `Секретный код для привязки: ${secret}\n\n` +
++    `Скопируйте его и вставьте в настройках проекта в админке, ` +
++    `чтобы получать уведомления о новых чатах.`;
++  await bot.sendMessage(chat.id, message);
++}
++
++bot.onText(/\/(start|code)/i, async (msg) => {
++  try {
++    await sendNewSecret(msg.chat);
++  } catch (err) {
++    console.error("[telegram-bot] failed to issue code", err?.message || err);
++    await bot.sendMessage(msg.chat.id, "Не удалось выдать код. Попробуйте ещё раз позже.");
++  }
++});
++
++bot.onText(/\/help/i, async (msg) => {
++  const help =
++    "Чтобы получать уведомления о новых диалогах:\n" +
++    "1) Отправьте /code, чтобы получить секрет.\n" +
++    "2) Откройте админку проекта и вставьте код в поле 'Telegram код'.";
++  await bot.sendMessage(msg.chat.id, help);
++});
++
++bot.on("message", async (msg) => {
++  if (msg.text?.startsWith("/")) return;
++  await bot.sendMessage(
++    msg.chat.id,
++    "Отправьте /code, чтобы получить секретный ключ для привязки уведомлений."
++  );
++});
++
++console.log("[telegram-bot] Bot started and polling for updates");
+diff --git a/web-admin/admin.js b/web-admin/admin.js
+index dc0c98b370fe5c01b80f5a28bd73f902e69259bf..6a4774d9ed27e87b51a9aae73e673b5fc9899b30 100644
+--- a/web-admin/admin.js
++++ b/web-admin/admin.js
+@@ -120,76 +120,146 @@ async function createProject(){
+   });
+   selectedProjectId = j.project.id;
+   await refreshProjects(false);
+   $("#projectSelect").value = selectedProjectId;
+   await loadProject(selectedProjectId);
+   if(isAdmin()) await refreshChats();
+ }
+ 
+ async function loadProject(projectId){
+   const j = await api(`${projectApiBase()}/${projectId}`);
+   const p = j.project;
+   selectedProjectId = p.id;
+ 
+   const projectName = projectsCache.find(x => x.id === p.id)?.name || "Проект";
+   $("#projectBadge").textContent = projectName;
+   $("#projectId").textContent = p.id;
+   $("#apiKey").value = p.openai_api_key || "";
+   $("#assistantId").value = p.assistant_id || "";
+   let instructions = p.instructions || "";
+   if(isAdmin() && p.assistant_id){
+     const ai = await fetchAssistantInstructions(p.id);
+     if(typeof ai === "string" && ai) instructions = ai;
+   }
+   $("#instructions").value = instructions;
+   $("#origins").value = (p.allowed_origins || []).join("\n");
++
++  renderTelegramSection(p);
+ }
+ 
+ async function saveProject(){
+   if(!selectedProjectId) return;
+   $("#saveOk").textContent = "";
+ 
+   const openai_api_key = $("#apiKey").value.trim();
+   const assistant_id = $("#assistantId").value.trim();
+   const instructions = $("#instructions").value;
+   const allowed_origins = $("#origins").value
+     .split("\n")
+     .map(s => s.trim())
+     .filter(Boolean);
+ 
+   const url = `${projectApiBase()}/${selectedProjectId}`;
+ 
+   await api(url, {
+     method:"PATCH",
+     headers:{ "Content-Type":"application/json" },
+     body: JSON.stringify({ openai_api_key, assistant_id, instructions, allowed_origins })
+   });
+ 
+   $("#saveOk").textContent = "Сохранено";
+   setTimeout(()=> $("#saveOk").textContent = "", 1400);
+ }
+ 
++function renderTelegramSection(project){
++  const statusEl = $("#telegramStatus");
++  const infoEl = $("#telegramInfo");
++  const errEl = $("#telegramErr");
++  const okEl = $("#telegramOk");
++  errEl.textContent = "";
++  okEl.textContent = "";
++
++  if(project.telegram_chat_id){
++    statusEl.textContent = "Подключено";
++    statusEl.className = "pill";
++    const connectedAt = project.telegram_connected_at
++      ? new Date(project.telegram_connected_at).toLocaleString()
++      : "";
++    infoEl.textContent = `Чат ID: ${project.telegram_chat_id}${connectedAt ? ` • с ${connectedAt}` : ""}`;
++  } else {
++    statusEl.textContent = "Не подключено";
++    statusEl.className = "pill muted";
++    infoEl.textContent = "Получите код в Telegram-боте AI Widget и вставьте его здесь.";
 +  }
 +}
 +
- /**
-  * For widget routes we reflect Access-Control-Allow-Origin ONLY if origin is in allowed_origins.
-  * If allowed_origins is empty -> deny by default (safer).
-+ *
-+ * Normalization notes:
-+ * - Allowed origins are trimmed + lowercased.
-+ * - Trailing slashes are ignored.
-+ * - Plain hostnames ("example.com") are supported alongside full origins.
-  */
- export async function widgetCors(req, res, next) {
-   try {
--    const origin = req.headers.origin;
-+    const rawOrigin = req.headers.origin;
-     const projectId = req.params.projectId;
- 
-     // Non-browser (no Origin) — allow (e.g. curl/health), but for widget it's mostly browser anyway.
--    if (!origin) return next();
-+    if (!rawOrigin) return next();
++async function linkTelegram(){
++  if(!selectedProjectId) return;
++  const code = $("#telegramCode").value.trim();
++  $("#telegramErr").textContent = "";
++  $("#telegramOk").textContent = "";
++  if(!code){
++    $("#telegramErr").textContent = "Введите код из бота";
++    return;
++  }
 +
-+    const originInfo = normalizeOrigin(rawOrigin);
-+    if (!originInfo) return res.status(400).json({ error: "invalid_origin" });
- 
-     const project = await getProject(projectId);
-     if (!project) return res.status(404).json({ error: "project_not_found" });
- 
--    const allowed = Array.isArray(project.allowed_origins) ? project.allowed_origins : [];
--    const ok = allowed.includes(origin);
-+    const allowedList = Array.isArray(project.allowed_origins) ? project.allowed_origins : [];
-+    const normalizedAllowed = allowedList
-+      .map(normalizeOrigin)
-+      .filter(Boolean);
-+
-+    const ok = normalizedAllowed.some((item) => {
-+      if (item.origin && originInfo.origin === item.origin) return true;
-+      if (item.host && originInfo.host === item.host) return true;
-+      return false;
++  try {
++    await api(`${projectApiBase()}/${selectedProjectId}`, {
++      method:"PATCH",
++      headers:{ "Content-Type":"application/json" },
++      body: JSON.stringify({ telegram_code: code })
 +    });
++    $("#telegramOk").textContent = "Телеграм подключён";
++    $("#telegramCode").value = "";
++    await loadProject(selectedProjectId);
++  } catch(err){
++    const codeName = err?.data?.error || err?.message || "api_error";
++    if(codeName === "invalid_telegram_code"){
++      $("#telegramErr").textContent = "Неверный или использованный код";
++    } else {
++      $("#telegramErr").textContent = "Не удалось подключить Телеграм";
++    }
++  }
++}
++
++async function unlinkTelegram(){
++  if(!selectedProjectId) return;
++  $("#telegramErr").textContent = "";
++  $("#telegramOk").textContent = "";
++  try {
++    await api(`${projectApiBase()}/${selectedProjectId}`, {
++      method:"PATCH",
++      headers:{ "Content-Type":"application/json" },
++      body: JSON.stringify({ unlink_telegram: true })
++    });
++    $("#telegramOk").textContent = "Телеграм отключён";
++    await loadProject(selectedProjectId);
++  } catch(err){
++    $("#telegramErr").textContent = "Не удалось отключить";
++  }
++}
++
+ async function deleteProject(){
+   if(!selectedProjectId) return;
+   if(!confirm("Удалить текущий проект? Это действие нельзя отменить.")) return;
+   await api(`${projectApiBase()}/${selectedProjectId}`, { method:"DELETE" });
+   selectedProjectId = null;
+   resetChatView();
+   await refreshProjects(true);
+ }
  
-     if (!ok) {
--      return res.status(403).json({ error: "origin_not_allowed", origin });
-+      return res.status(403).json({ error: "origin_not_allowed", origin: rawOrigin });
+ async function refreshChats(){
+   if(!selectedProjectId) return;
+   const mode = $("#filterMode").value;
+   const status = $("#filterStatus").value;
+   const qs = new URLSearchParams();
+   if(mode) qs.set("mode", mode);
+   if(status) qs.set("status", status);
+ 
+   const base = isAdmin()
+     ? `/api/admin/projects/${selectedProjectId}/chats`
+     : `/api/user/projects/${selectedProjectId}/chats`;
+   const j = await api(`${base}?${qs.toString()}`);
+   renderChats(j.items || []);
+ }
+ 
+ function renderChats(items){
+@@ -376,29 +446,31 @@ async function createUserFromForm(e){
+       $("#userErr").textContent = "Нужно указать email и пароль";
+     } else {
+       $("#userErr").textContent = "Не удалось создать пользователя. Попробуйте ещё раз.";
      }
- 
--    res.setHeader("Access-Control-Allow-Origin", origin);
-+    res.setHeader("Access-Control-Allow-Origin", rawOrigin);
-     res.setHeader("Access-Control-Allow-Credentials", "true");
-     res.setHeader("Vary", "Origin");
- 
-     if (req.method === "OPTIONS") {
-       res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-       res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-       return res.status(204).end();
-     }
- 
-     return next();
-   } catch (e) {
-     return res.status(500).json({ error: "cors_error", message: e?.message || String(e) });
    }
  }
+ 
+ $("#btnLogin").addEventListener("click", ()=> login().catch(e => $("#loginErr").textContent = "Ошибка входа"));
+ $("#btnLogout").addEventListener("click", ()=> logout().catch(()=>{}));
+ $("#btnRefreshProjects").addEventListener("click", ()=> refreshProjects(false).catch(()=>{}));
+ $("#btnCreateProject").addEventListener("click", ()=> createProject().catch(()=>{}));
+ $("#btnSaveProject").addEventListener("click", ()=> saveProject().catch(()=>{}));
+ $("#btnDeleteProject").addEventListener("click", ()=> deleteProject().catch(()=>{}));
+ $("#btnRefreshChats").addEventListener("click", ()=> refreshChats().catch(()=>{}));
+ $("#projectSelect").addEventListener("change", async (e)=>{
+   selectedProjectId = e.target.value;
+   resetChatView();
+   await loadProject(selectedProjectId);
+   await refreshChats();
+ });
+ $("#btnRelease").addEventListener("click", ()=> release().catch(()=>{}));
+ $("#humanForm").addEventListener("submit", sendHuman);
+ $("#btnOpenSettings").addEventListener("click", ()=> showPage("settings"));
+ $("#btnBackToChats").addEventListener("click", ()=> showPage("chats"));
+ $("#btnOpenUsers").addEventListener("click", ()=>{ showPage("users"); refreshUsers().catch(()=>{}); });
++$("#btnLinkTelegram").addEventListener("click", ()=> linkTelegram().catch(()=>{}));
++$("#btnUnlinkTelegram").addEventListener("click", ()=> unlinkTelegram().catch(()=>{}));
+ $("#userForm").addEventListener("submit", (e)=> createUserFromForm(e).catch(()=>{}));
+ $("#btnBackFromUsers").addEventListener("click", ()=> showPage("chats"));
+ 
+ showPage("chats");
+diff --git a/web-admin/index.html b/web-admin/index.html
+index 8a139abb487fdf95426bb2794e3d35a3b6d4a6a3..a995464d02a9a5282b2fca06bf9489c5d3674f0d 100644
+--- a/web-admin/index.html
++++ b/web-admin/index.html
+@@ -130,50 +130,70 @@
+           <div class="settingsCard card">
+             <div class="muted">Project ID (вставляется в data-project-id):</div>
+             <div class="mono" id="projectId"></div>
+ 
+             <div class="formGrid">
+               <div>
+                 <label class="muted">OpenAI API key (клиента)</label>
+                 <input id="apiKey" placeholder="sk-..."/>
+               </div>
+               <div>
+                 <label class="muted">OpenAI assistant_id</label>
+                 <input id="assistantId" placeholder="asst_..."/>
+               </div>
+             </div>
+ 
+             <div>
+               <label class="muted">Allowed origins (по одному в строке)</label>
+               <textarea id="origins" rows="4" placeholder="https://clientsite.com&#10;https://www.clientsite.com"></textarea>
+             </div>
+ 
+             <div>
+               <label class="muted">Инструкция (additional_instructions)</label>
+               <textarea id="instructions" rows="6" placeholder="Инструкция для ассистента..."></textarea>
+             </div>
+ 
++            <div class="formGrid" style="align-items:flex-end">
++              <div>
++                <label class="muted">Уведомления в Telegram</label>
++                <div id="telegramStatus" class="pill muted">Не подключено</div>
++                <div class="muted" id="telegramInfo" style="margin-top:6px"></div>
++              </div>
++              <div>
++                <label class="muted">Telegram код (из бота)</label>
++                <div class="row tight">
++                  <input id="telegramCode" placeholder="секретный код" />
++                  <button id="btnLinkTelegram" type="button">Привязать</button>
++                  <button id="btnUnlinkTelegram" type="button" class="ghost">Отвязать</button>
++                </div>
++                <div class="row" style="justify-content:space-between;margin-top:6px">
++                  <span id="telegramErr" class="err"></span>
++                  <span id="telegramOk" class="ok"></span>
++                </div>
++              </div>
++            </div>
++
+             <div class="row">
+               <button id="btnSaveProject">Сохранить</button>
+               <button id="btnDeleteProject" class="ghost">Удалить проект</button>
+               <span id="saveOk" class="ok"></span>
+             </div>
+           </div>
+         </section>
+ 
+         <section id="pageUsers" class="page adminOnly" style="display:none">
+           <div class="pageHead">
+             <div>
+               <p class="eyebrow">Пользователи</p>
+               <h2>Создание и просмотр пользователей</h2>
+               <p class="muted">Администратор может добавлять аккаунты для работы в системе.</p>
+             </div>
+             <div class="row">
+               <button id="btnBackFromUsers" class="ghost">← Назад</button>
+             </div>
+           </div>
+ 
+           <div class="card" style="display:flex;flex-direction:column;gap:12px">
+             <form id="userForm" class="formGrid" style="align-items:flex-end">
+               <div>
+                 <label class="muted">Email пользователя</label>
+                 <input id="newUserEmail" placeholder="user@example.com" type="email" required />

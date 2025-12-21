@@ -26,6 +26,7 @@ import {
 import { widgetCors } from "./lib/widgetCors.js";
 import { fetchAssistantInstructions, runAssistantStream, syncOperatorToThread } from "./lib/openai.js";
 import { getChatDisplayName } from "./lib/chatNames.js";
+import { consumeTelegramSecret, notifyProjectAboutNewChat } from "./lib/telegram.js";
 
 dotenv.config({ path: "/var/www/ai-widget/server/.env" });
 
@@ -60,6 +61,8 @@ app.post("/api/widget/:projectId/chat/start", widgetCors, async (req, res) => {
     visitorId: visitorId || null,
     openaiApiKey: project.openai_api_key,
   });
+
+  notifyProjectAboutNewChat(project, chat);
 
   res.json({ chatId: chat.id, mode: chat.mode });
 });
@@ -254,6 +257,21 @@ app.patch("/api/user/projects/:projectId", requireUser, async (req, res) => {
   if (typeof req.body?.instructions === "string") patch.instructions = req.body.instructions;
   if (Array.isArray(req.body?.allowed_origins)) patch.allowed_origins = req.body.allowed_origins.map(String);
 
+  if (typeof req.body?.telegram_code === "string") {
+    const code = req.body.telegram_code.trim();
+    if (code) {
+      const token = await consumeTelegramSecret(code);
+      if (!token) return res.status(400).json({ error: "invalid_telegram_code" });
+      patch.telegram_chat_id = token.chat_id;
+      patch.telegram_connected_at = new Date();
+    }
+  }
+
+  if (req.body?.unlink_telegram === true) {
+    patch.telegram_chat_id = null;
+    patch.telegram_connected_at = null;
+  }
+
   const updated = await updateProject(req.params.projectId, patch);
   res.json({ project: updated });
 });
@@ -308,6 +326,21 @@ app.patch("/api/admin/projects/:projectId", requireAdmin, async (req, res) => {
   if (typeof req.body?.instructions === "string") patch.instructions = req.body.instructions;
   if (Array.isArray(req.body?.allowed_origins)) patch.allowed_origins = req.body.allowed_origins.map(String);
   if (typeof req.body?.owner_id === "string") patch.owner_id = req.body.owner_id;
+
+  if (typeof req.body?.telegram_code === "string") {
+    const code = req.body.telegram_code.trim();
+    if (code) {
+      const token = await consumeTelegramSecret(code);
+      if (!token) return res.status(400).json({ error: "invalid_telegram_code" });
+      patch.telegram_chat_id = token.chat_id;
+      patch.telegram_connected_at = new Date();
+    }
+  }
+
+  if (req.body?.unlink_telegram === true) {
+    patch.telegram_chat_id = null;
+    patch.telegram_connected_at = null;
+  }
 
   const project = await updateProject(req.params.projectId, patch);
   if (!project) return res.status(404).json({ error: "project_not_found" });

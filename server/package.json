@@ -6,13 +6,15 @@
   "scripts": {
     "start": "node src/index.js",
     "start:prod": "NODE_ENV=production node src/index.js",
-    "dev": "node --watch src/index.js"
+    "dev": "node --watch src/index.js",
+    "bot": "DOTENV_CONFIG_PATH=/var/www/ai-widget/server/.env node --import dotenv/config src/telegram-bot.js"
   },
   "dependencies": {
     "cookie-parser": "^1.4.6",
-    "dotenv": "^16.4.5",
+    "dotenv": "^16.6.1",
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
+    "node-telegram-bot-api": "^0.66.0",
     "openai": "^4.70.0",
     "pg": "^8.12.0",
     "uuid": "^9.0.1"
