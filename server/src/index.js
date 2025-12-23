@@ -24,7 +24,12 @@ import {
   touchChat,
 } from "./lib/store.js";
 import { widgetCors } from "./lib/widgetCors.js";
-import { fetchAssistantInstructions, runAssistantStream, syncOperatorToThread } from "./lib/openai.js";
+import {
+  fetchAssistantInstructions,
+  runAssistantStream,
+  syncOperatorToThread,
+  updateAssistantInstructions,
+} from "./lib/openai.js";
 import { getChatDisplayName } from "./lib/chatNames.js";
 import { consumeTelegramSecret, notifyProjectAboutNewChat } from "./lib/telegram.js";
 
@@ -315,6 +320,9 @@ app.get(
 );
 
 app.patch("/api/admin/projects/:projectId", requireAdmin, async (req, res) => {
+  const current = await getProject(req.params.projectId);
+  if (!current) return res.status(404).json({ error: "project_not_found" });
+  
   const patch = {};
 
   if (typeof req.body?.name === "string") patch.name = req.body.name;
@@ -344,6 +352,22 @@ app.patch("/api/admin/projects/:projectId", requireAdmin, async (req, res) => {
 
   const project = await updateProject(req.params.projectId, patch);
   if (!project) return res.status(404).json({ error: "project_not_found" });
+  
+  const assistantId = patch.assistant_id ?? current.assistant_id;
+  const apiKey = patch.openai_api_key ?? current.openai_api_key;
+  const instructions = patch.instructions ?? current.instructions;
+
+  if (typeof req.body?.instructions === "string" && assistantId && apiKey) {
+    try {
+      await updateAssistantInstructions({ apiKey, assistantId, instructions });
+    } catch (err) {
+      console.warn("assistant instructions update failed", err?.message || err);
+      return res
+        .status(500)
+        .json({ error: "failed_to_update_assistant", message: err?.message || "" });
+    }
+  }
+  
   res.json({ project });
 });
 

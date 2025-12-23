@@ -136,7 +136,7 @@ async function loadProject(projectId){
   $("#apiKey").value = p.openai_api_key || "";
   $("#assistantId").value = p.assistant_id || "";
   let instructions = p.instructions || "";
-  if(isAdmin() && p.assistant_id){
+  if(isAdmin() && p.assistant_id && !instructions){
     const ai = await fetchAssistantInstructions(p.id);
     if(typeof ai === "string" && ai) instructions = ai;
   }

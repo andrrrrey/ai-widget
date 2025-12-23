@@ -96,3 +96,10 @@ export async function fetchAssistantInstructions({ apiKey, assistantId }) {
   const assistant = await client.beta.assistants.retrieve(assistantId);
   return assistant?.instructions || "";
 }
+
+export async function updateAssistantInstructions({ apiKey, assistantId, instructions }) {
+  const client = getClient(apiKey);
+  await client.beta.assistants.update(assistantId, {
+    instructions: instructions || "",
+  });  
+}
