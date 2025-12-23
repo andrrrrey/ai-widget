@@ -35,6 +35,9 @@ import { consumeTelegramSecret, notifyProjectAboutNewChat } from "./lib/telegram
 
 dotenv.config({ path: "/var/www/ai-widget/server/.env" });
 
+const NO_SOURCE_INSTRUCTION =
+  "Не указывай в ответах источник документа, из которого взята информация.";
+  
 const app = express();
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
@@ -99,6 +102,20 @@ app.get("/api/widget/:projectId/chat/:chatId/stream", widgetCors, async (req, re
     res.write(`data: ${JSON.stringify(data)}\n\n`);
   };
 
+  const sanitizeCitations = (text) => text.replace(/【[^】]*】/g, "");
+  let rawStream = "";
+  let sentClean = "";
+
+  const sendSanitizedToken = (token) => {
+    rawStream += token || "";
+    const cleaned = sanitizeCitations(rawStream);
+    const delta = cleaned.slice(sentClean.length);
+    if (delta) {
+      send("token", { t: delta });
+      sentClean = cleaned;
+    }
+  };
+  
   try {
     await touchChat(chatId);
     await addMessage({ chatId, role: "user", content: message });
@@ -128,17 +145,25 @@ app.get("/api/widget/:projectId/chat/:chatId/stream", widgetCors, async (req, re
 
     send("meta", { chatId, mode: "assistant" });
 
+    const additionalInstructions = [project.instructions, NO_SOURCE_INSTRUCTION]
+      .filter(Boolean)
+      .join("\n\n");
+      
     await runAssistantStream({
       apiKey: project.openai_api_key,
       threadId: chat.thread_id,
       assistantId: project.assistant_id,
-      additionalInstructions: project.instructions || "",
+      additionalInstructions,
       userMessage: message,
-      onToken: (t) => send("token", { t }),
+      onToken: (t) => sendSanitizedToken(t),
       onTool: (tool) => send("tool", tool),
       onDone: async (fullText) => {
-        if (fullText && fullText.trim()) {
-          await addMessage({ chatId, role: "assistant", content: fullText });
+        const finalText = sanitizeCitations(fullText || rawStream).trim();
+        if (finalText) {
+          if (finalText.length > sentClean.length) {
+            send("token", { t: finalText.slice(sentClean.length) });
+          }
+          await addMessage({ chatId, role: "assistant", content: finalText });
         }
         send("done", { chatId });
         res.end();
