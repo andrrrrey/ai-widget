@@ -24,6 +24,7 @@ async function sendNewSecret(chat) {
   const secret = await issueTelegramSecret({
     chatId: chat.id,
     username: chat?.username || null,
+    chatType: chat?.type || null,
   });
   const message =
     `Привет! Это бот уведомлений AI Widget.\n` +

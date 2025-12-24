@@ -4,6 +4,8 @@ dotenv.config({ path: "/var/www/ai-widget/server/.env" });
 import crypto from "crypto";
 
 import { sql } from "./db.js";
+import { getChatDisplayName } from "./chatNames.js";
+import { listProjectTelegramChats } from "./store.js";
 
 const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
 
@@ -15,7 +17,7 @@ export function isTelegramConfigured() {
   return Boolean(TELEGRAM_TOKEN);
 }
 
-export async function issueTelegramSecret({ chatId, username = null }) {
+export async function issueTelegramSecret({ chatId, username = null, chatType = null }) {
   if (!chatId) throw new Error("chat_id_required");
 
   let attempts = 0;
@@ -23,9 +25,9 @@ export async function issueTelegramSecret({ chatId, username = null }) {
     const secret = randomSecret();
     try {
       await sql.exec(
-        `INSERT INTO telegram_link_tokens (secret, chat_id, username)
-         VALUES ($1,$2,$3)`,
-        [secret, String(chatId), username || null]
+        `INSERT INTO telegram_link_tokens (secret, chat_id, username, chat_type)
+         VALUES ($1,$2,$3,$4)`,
+        [secret, String(chatId), username || null, chatType || null]
       );
       return secret;
     } catch (err) {
@@ -43,7 +45,7 @@ export async function consumeTelegramSecret(secret) {
     `UPDATE telegram_link_tokens
        SET used_at=NOW()
      WHERE secret=$1 AND used_at IS NULL
-     RETURNING chat_id, username, created_at`,
+     RETURNING chat_id, username, chat_type, created_at`,
     [secret]
   );
 }
@@ -71,7 +73,18 @@ function formatProjectTitle(project) {
 }
 
 function formatChatId(chat) {
-  return chat?.id || "неизвестен";
+  if (!chat?.id) return "неизвестен";
+  return getChatDisplayName(chat.id);
+}
+
+async function listProjectTelegramChatIds(project) {
+  if (!project?.id) return [];
+  const rows = await listProjectTelegramChats(project.id);
+  const ids = rows.map((row) => row.chat_id).filter(Boolean);
+  if (project.telegram_chat_id && !ids.includes(project.telegram_chat_id)) {
+    ids.push(project.telegram_chat_id);
+  }
+  return ids;
 }
 
 function normalizeMatch(value) {
@@ -116,24 +129,30 @@ export function extractContactInfo(text) {
 }
 
 export async function notifyProjectAboutFirstMessage(project, chat, messageText) {
-  if (!project?.telegram_chat_id || !isTelegramConfigured()) return;
+  if (!isTelegramConfigured()) return;
   const title = formatProjectTitle(project);
+  const chatIds = await listProjectTelegramChatIds(project);
+  if (chatIds.length === 0) return;
   const message =
     `На проекте ${title} получено первое сообщение от пользователя.\n` +
     `ID чата: ${formatChatId(chat)}.\n` +
     `Сообщение: ${String(messageText || "").trim().slice(0, 500) || "—"}`;
 
-  try {
-    await sendTelegramMessage(project.telegram_chat_id, message);
-  } catch (err) {
-    console.warn("telegram notify failed", err?.message || err);
+  for (const chatId of chatIds) {
+    try {
+      await sendTelegramMessage(chatId, message);
+    } catch (err) {
+      console.warn("telegram notify failed", err?.message || err);
+    }
   }
 }
 
 export async function notifyProjectAboutContacts(project, chat, contacts, messageText) {
-  if (!project?.telegram_chat_id || !isTelegramConfigured()) return;
+  if (!isTelegramConfigured()) return;
   if (!Array.isArray(contacts) || contacts.length === 0) return;
   const title = formatProjectTitle(project);
+  const chatIds = await listProjectTelegramChatIds(project);
+  if (chatIds.length === 0) return;
   const contactsLine = contacts.map((item) => item.value).join(", ");
   const message =
     `На проекте ${title} пользователь оставил контакты.\n` +
@@ -141,9 +160,11 @@ export async function notifyProjectAboutContacts(project, chat, contacts, messag
     `Контакты: ${contactsLine}\n` +
     `Сообщение: ${String(messageText || "").trim().slice(0, 500) || "—"}`;
 
-  try {
-    await sendTelegramMessage(project.telegram_chat_id, message);
-  } catch (err) {
-    console.warn("telegram notify failed", err?.message || err);
+  for (const chatId of chatIds) {
+    try {
+      await sendTelegramMessage(chatId, message);
+    } catch (err) {
+      console.warn("telegram notify failed", err?.message || err);
+    }
   }
 }

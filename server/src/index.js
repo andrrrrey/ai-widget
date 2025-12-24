@@ -17,6 +17,8 @@ import {
   getProject,
   updateProject,
   deleteProject,
+  addProjectTelegramChat,
+  deleteProjectTelegramChats,
   createChat,
   getChatById,
   listChats,
@@ -325,12 +327,22 @@ app.patch("/api/user/projects/:projectId", requireUser, async (req, res) => {
     if (code) {
       const token = await consumeTelegramSecret(code);
       if (!token) return res.status(400).json({ error: "invalid_telegram_code" });
-      patch.telegram_chat_id = token.chat_id;
-      patch.telegram_connected_at = new Date();
+      await addProjectTelegramChat({
+        projectId: project.id,
+        chatId: token.chat_id,
+        chatType: token.chat_type,
+      });
+      if (!project.telegram_chat_id) {
+        patch.telegram_chat_id = token.chat_id;
+      }
+      if (!project.telegram_connected_at) {
+        patch.telegram_connected_at = new Date();
+      }
     }
   }
 
   if (req.body?.unlink_telegram === true) {
+    await deleteProjectTelegramChats(project.id);
     patch.telegram_chat_id = null;
     patch.telegram_connected_at = null;
   }
@@ -422,12 +434,22 @@ app.patch("/api/admin/projects/:projectId", requireAdmin, async (req, res) => {
     if (code) {
       const token = await consumeTelegramSecret(code);
       if (!token) return res.status(400).json({ error: "invalid_telegram_code" });
-      patch.telegram_chat_id = token.chat_id;
-      patch.telegram_connected_at = new Date();
+      await addProjectTelegramChat({
+        projectId: current.id,
+        chatId: token.chat_id,
+        chatType: token.chat_type,
+      });
+      if (!current.telegram_chat_id) {
+        patch.telegram_chat_id = token.chat_id;
+      }
+      if (!current.telegram_connected_at) {
+        patch.telegram_connected_at = new Date();
+      }
     }
   }
 
   if (req.body?.unlink_telegram === true) {
+    await deleteProjectTelegramChats(current.id);
     patch.telegram_chat_id = null;
     patch.telegram_connected_at = null;
   }

@@ -15,8 +15,8 @@ export const pool = new pg.Pool({
   port: process.env.PGPORT ? Number(process.env.PGPORT) : undefined,  
   max: 10,
   // Fail fast instead of hanging the request when Postgres is unreachable
-  connectionTimeoutMillis: 5_000,
-  idleTimeoutMillis: 30_000,
+  connectionTimeoutMillis: 5000,
+  idleTimeoutMillis: 30000,
 });
 
 export async function ensureSchema() {

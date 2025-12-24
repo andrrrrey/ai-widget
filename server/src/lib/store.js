@@ -107,6 +107,32 @@ export async function updateProject(projectId, patch) {
   );
 }
 
+export async function addProjectTelegramChat({ projectId, chatId, chatType = null }) {
+  if (!projectId || !chatId) return false;
+  await sql.exec(
+    `INSERT INTO project_telegram_chats (project_id, chat_id, chat_type)
+     VALUES ($1,$2,$3)
+     ON CONFLICT (project_id, chat_id)
+     DO UPDATE SET chat_type=EXCLUDED.chat_type`,
+    [projectId, String(chatId), chatType || null]
+  );
+  return true;
+}
+
+export async function listProjectTelegramChats(projectId) {
+  if (!projectId) return [];
+  return await sql.many(
+    "SELECT chat_id, chat_type, created_at FROM project_telegram_chats WHERE project_id=$1 ORDER BY created_at ASC",
+    [projectId]
+  );
+}
+
+export async function deleteProjectTelegramChats(projectId) {
+  if (!projectId) return false;
+  await sql.exec("DELETE FROM project_telegram_chats WHERE project_id=$1", [projectId]);
+  return true;
+}
+
 export async function deleteProject(projectId) {
   const existing = await getProject(projectId);
   if (!existing) return false;
