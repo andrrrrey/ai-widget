@@ -280,6 +280,16 @@
   width:100%;
   font-size: 16px;
   color: rgba(0,0,0,.72);
+
+  /* textarea */
+  resize: none;
+  overflow: hidden;
+  line-height: 1.35;
+  max-height: 180px;     /* должно совпадать с JS */
+  min-height: 22px;
+  padding: 0;            /* composer уже даёт padding контейнером */
+  margin: 0;
+  font-family: inherit;
 }
 
 .aiw-input::placeholder{ color: rgba(0,0,0,.35); }
@@ -295,6 +305,24 @@
   cursor:pointer;
   opacity:.7;
 }
+
+/* чтобы браузер не "якорил" прокрутку странно и не было микропрыжков */
+.aiw-chat{
+  overflow-anchor: none;
+}
+
+/* немного стабилизируем высоту метки, чтобы при появлении/смене текста не дёргалось */
+.aiw-label{
+  line-height: 16px;
+  min-height: 16px;
+}
+
+/* на всякий случай: длинные слова/ссылки не должны раздвигать пузырь и ломать лейаут */
+.aiw-bubble p{
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
 
 .aiw-send svg{width:28px;height:28px}
 .aiw-send:hover{opacity:1}

@@ -9,14 +9,16 @@
     return;
   }
 
-  const BASE = new URL(script.src).origin; // https://loginov.futuguru.com
+  const BASE = new URL(script.src).origin; // https://loginof.futuguru.com
 
+  // Load CSS
   const cssUrl = BASE + "/widget/widget.css";
   const link = document.createElement("link");
   link.rel = "stylesheet";
   link.href = cssUrl;
   document.head.appendChild(link);
 
+  // Visitor id
   const visitorKey = "aiw_visitor_id";
   let visitorId = localStorage.getItem(visitorKey);
   if (!visitorId) {
@@ -57,7 +59,13 @@
 
       <div class="aiw-composerWrap">
         <form class="aiw-composer" id="aiw-form" role="group" aria-label="Message composer">
-          <input class="aiw-input" id="aiw-input" placeholder="Спросите что-нибудь..." autocomplete="off"/>
+          <textarea
+            class="aiw-input"
+            id="aiw-input"
+            placeholder="Спросите что-нибудь..."
+            rows="1"
+            aria-label="Введите сообщение"
+          ></textarea>
           <button class="aiw-send" type="submit" aria-label="Send">
             <svg viewBox="0 0 24 24" fill="none" stroke="rgba(130,140,155,.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M22 2L11 13" />
@@ -79,8 +87,15 @@
   const msgs = panel.querySelector("#aiw-msgs");
   const statusEl = panel.querySelector("#aiw-status");
 
-  let renderedCount = 0;
   let shouldAutoScroll = true;
+
+  // --- streaming state (чтобы polling не “затирал” печатающийся пузырь)
+  const streamState = {
+    active: false,
+    assistantPEl: null, // <p> внутри пузыря ассистента
+    acc: "",
+    rafScroll: 0,
+  };
 
   function setStatus(text) {
     statusEl.textContent = text || "";
@@ -95,13 +110,23 @@
     msgs.scrollTo({ top: msgs.scrollHeight, behavior: useSmooth ? "smooth" : "auto" });
   }
 
+  function scheduleScrollDuringStream() {
+    if (!shouldAutoScroll) return;
+    if (streamState.rafScroll) return;
+    streamState.rafScroll = requestAnimationFrame(() => {
+      streamState.rafScroll = 0;
+      // во время стрима — только auto, иначе будет “прыгать”
+      scrollToBottom(false);
+    });
+  }
+
   function setRole(el, role) {
     const isUser = role === "user";
     el.className = "aiw-msg " + (isUser ? "aiw-right" : "aiw-left");
     const label = el.querySelector(".aiw-label");
     if (label) label.textContent = isUser ? "Я" : role === "human" ? "Оператор" : "ИИ";
   }
-  
+
   function append(role, text, opts = {}) {
     const stickToBottom = opts.forceScroll || shouldAutoScroll;
     const item = document.createElement("div");
@@ -119,9 +144,8 @@
     item.appendChild(bubble);
 
     setRole(item, role);
-    
+
     msgs.appendChild(item);
-    renderedCount++;
     if (stickToBottom) scrollToBottom(true);
     return p;
   }
@@ -133,24 +157,27 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ visitorId }),
     });
-    const j = await r.json();
+    const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j?.error || "start_failed");
     chatId = j.chatId;
     return chatId;
   }
 
   function renderMessages(items) {
+    // ВАЖНО: во время streamState.active ничего не рендерим с сервера,
+    // чтобы не “стёрло” печатающийся пузырь.
+    if (streamState.active) return;
+
     const wasAtBottom = isAtBottom();
 
-    if (msgs.children.length > items.length) {
-      msgs.innerHTML = "";
-      renderedCount = 0;
-    }
-
+    // “Мягкая” синхронизация:
+    // - обновляем существующие по индексу
+    // - дорисовываем недостающее
+    // - не удаляем лишнее (это может быть локальная отрисовка, пока сервер догоняет)
     items.forEach((item, idx) => {
       const existing = msgs.children[idx];
       if (existing) {
-        setRole(existing, item.role);          
+        setRole(existing, item.role);
         const bubbleText = existing.querySelector(".aiw-bubble p");
         if (bubbleText && bubbleText.textContent !== item.content) {
           bubbleText.textContent = item.content;
@@ -160,7 +187,6 @@
       }
     });
 
-    renderedCount = items.length;
     if (wasAtBottom) scrollToBottom(true);
   }
 
@@ -169,11 +195,12 @@
 
   async function syncMessages() {
     if (!chatId || pollInFlight) return;
+    if (streamState.active) return;
     pollInFlight = true;
     try {
       const r = await fetch(`${BASE}/api/widget/${projectId}/chat/${chatId}/messages`);
       if (!r.ok) throw new Error("messages_failed");
-      const j = await r.json();
+      const j = await r.json().catch(() => ({}));
       if (Array.isArray(j.items)) renderMessages(j.items);
     } catch (e) {
       console.warn("syncMessages failed", e);
@@ -193,51 +220,90 @@
     pollTimer = null;
   }
 
+  // --- textarea autosize (растёт вниз при вводе)
+  function autoResizeTextarea(el) {
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 180) + "px"; // максимум ~8-9 строк
+  }
+  autoResizeTextarea(input);
+
+  input.addEventListener("input", () => autoResizeTextarea(input));
+
+  // Enter = send, Shift+Enter = newline
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      form.requestSubmit?.();
+    }
+  });
+
   async function sendMessage(text) {
     await ensureChat();
 
     append("user", text);
     input.value = "";
+    autoResizeTextarea(input);
     input.focus();
 
     setStatus("Печатает…");
 
-    // Stream assistant via SSE
-    const url = `${BASE}/api/widget/${projectId}/chat/${chatId}/stream?message=${encodeURIComponent(text)}`;
-    const es = new EventSource(url, { withCredentials: true });
+    // На время SSE отключаем polling, чтобы не было “пропаданий”
+    stopPollingMessages();
+    streamState.active = true;
+    streamState.assistantPEl = null;
+    streamState.acc = "";
 
-    let assistantText = null;
-    let acc = "";
+    const url = `${BASE}/api/widget/${projectId}/chat/${chatId}/stream?message=${encodeURIComponent(text)}`;
+    const es = new EventSource(url);
+
+    const finalizeStream = async (opts = {}) => {
+      streamState.active = false;
+      try {
+        es.close();
+      } catch {}
+      if (!opts.keepStatus) setStatus("");
+
+      // один раз синкнём, чтобы подтянуть финальный текст из БД
+      await syncMessages();
+
+      // включим polling обратно
+      startPollingMessages();
+    };
 
     es.addEventListener("token", (e) => {
       const data = JSON.parse(e.data);
       const t = data.t || "";
-      if (!assistantText) {
-        assistantText = append("assistant", "");
+
+      if (!streamState.assistantPEl) {
+        // Создаём пузырь ассистента один раз и дальше дописываем в него
+        streamState.assistantPEl = append("assistant", "");
       }
-      acc += t;
-      assistantText.textContent = acc;
-      if (shouldAutoScroll) scrollToBottom(true);
+
+      streamState.acc += t;
+      streamState.assistantPEl.textContent = streamState.acc;
+
+      // автоскролл без smooth, иначе “прыжки”
+      scheduleScrollDuringStream();
     });
 
-    es.addEventListener("waiting_for_human", () => {
+    es.addEventListener("waiting_for_human", async () => {
       setStatus("Оператор подключился. Подождите, пожалуйста…");
-      startPollingMessages();
+      await finalizeStream({ keepStatus: true });
     });
 
-    es.addEventListener("error", (e) => {
+    es.addEventListener("error", async (e) => {
+      let msg = "Ошибка";
       try {
-        const data = JSON.parse(e.data);
-        setStatus("Ошибка: " + (data.message || "unknown"));
-      } catch {
-        setStatus("Ошибка");
-      }
-      es.close();
+        const data = e?.data ? JSON.parse(e.data) : null;
+        if (data?.message) msg = "Ошибка: " + data.message;
+      } catch {}
+      setStatus(msg);
+      await finalizeStream({ keepStatus: true });
     });
 
-    es.addEventListener("done", () => {
-      setStatus("");
-      es.close();
+    es.addEventListener("done", async () => {
+      await finalizeStream();
     });
   }
 
@@ -267,11 +333,8 @@
   }
 
   btn.addEventListener("click", async () => {
-    if (isOpen) {
-      closePanel();
-    } else {
-      await openPanel();
-    }
+    if (isOpen) closePanel();
+    else await openPanel();
   });
 
   overlayClose.addEventListener("click", closePanel);
@@ -285,19 +348,12 @@
     } catch (err) {
       console.error(err);
       setStatus("Не удалось отправить сообщение");
+      streamState.active = false;
+      startPollingMessages();
     }
   });
 
   msgs.addEventListener("scroll", () => {
     shouldAutoScroll = isAtBottom();
   });
-
-  function escapeHtml(s) {
-    return String(s)
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
-  }
 })();
