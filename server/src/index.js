@@ -329,17 +329,31 @@ app.get(
     if (!project.assistant_id) return res.status(400).json({ error: "assistant_id_missing" });
     if (!project.openai_api_key) return res.status(400).json({ error: "openai_api_key_missing" });
 
+    const fallback = project.instructions || "";
+    
     try {
       const instructions = await fetchAssistantInstructions({
         apiKey: project.openai_api_key,
         assistantId: project.assistant_id,
       });
-      res.json({ instructions });
+      res.json({ instructions, source: "assistant" });
     } catch (err) {
-      console.warn("assistant instructions fetch error", err?.message || err);
-      res
-        .status(500)
-        .json({ error: "failed_to_fetch_assistant", message: err?.message || "" });
+      const status = err?.status || err?.statusCode || 500;
+      const message = err?.message || String(err);
+      const payload = {
+        instructions: fallback,
+        source: "project",
+        error: "failed_to_fetch_assistant",
+        message,
+      };
+
+      if (status === 404) {
+        console.info("assistant instructions fetch error (not found)", message);
+        return res.json({ ...payload, error: "assistant_not_found" });
+      }
+
+      console.warn("assistant instructions fetch error", message);
+      res.json(payload);
     }
   }
 );
