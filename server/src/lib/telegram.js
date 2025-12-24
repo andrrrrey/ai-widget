@@ -66,13 +66,80 @@ export async function sendTelegramMessage(chatId, text) {
   return true;
 }
 
-export async function notifyProjectAboutNewChat(project, chat) {
+function formatProjectTitle(project) {
+  return project?.name ? `"${project.name}"` : "вашем сайте";
+}
+
+function formatChatId(chat) {
+  return chat?.id || "неизвестен";
+}
+
+function normalizeMatch(value) {
+  return String(value || "").trim();
+}
+
+export function extractContactInfo(text) {
+  if (!text) return [];
+  const candidates = [];
+  const emailMatches = text.match(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi) || [];
+  emailMatches.forEach((value) => candidates.push({ type: "email", value }));
+
+  const phoneMatches = text.match(/(\+?\d[\d\s().-]{6,}\d)/g) || [];
+  phoneMatches.forEach((value) => candidates.push({ type: "phone", value }));
+
+  const tgHandleMatches = text.match(/(?:^|\s)@([a-zA-Z0-9_]{5,})/g) || [];
+  tgHandleMatches.forEach((value) => candidates.push({ type: "telegram", value }));
+
+  const tmeMatches = text.match(/t\.me\/([a-zA-Z0-9_]+)/gi) || [];
+  tmeMatches.forEach((value) => candidates.push({ type: "telegram", value }));
+
+  const waMatches = text.match(/wa\.me\/\d+/gi) || [];
+  waMatches.forEach((value) => candidates.push({ type: "whatsapp", value }));
+
+  const tgLabelMatches = text.match(/(?:телеграм|telegram|tg)[:\s]+([\w@.+-]{3,})/gi) || [];
+  tgLabelMatches.forEach((value) => candidates.push({ type: "telegram", value }));
+
+  const waLabelMatches = text.match(/(?:whatsapp|ватсап|ватап)[:\s]+([\w@.+-]{3,})/gi) || [];
+  waLabelMatches.forEach((value) => candidates.push({ type: "whatsapp", value }));
+
+  const unique = new Map();
+  candidates.forEach((item) => {
+    const cleaned = normalizeMatch(item.value);
+    if (!cleaned) return;
+    const key = `${item.type}:${cleaned.toLowerCase()}`;
+    if (!unique.has(key)) {
+      unique.set(key, { type: item.type, value: cleaned });
+    }
+  });
+
+  return Array.from(unique.values());
+}
+
+export async function notifyProjectAboutFirstMessage(project, chat, messageText) {
   if (!project?.telegram_chat_id || !isTelegramConfigured()) return;
-  const title = project?.name ? `"${project.name}"` : "вашем сайте";
+  const title = formatProjectTitle(project);
   const message =
-    `На проекте ${title} открыт новый диалог.\n` +
-    `ID чата: ${chat?.id || "неизвестен"}.\n` +
-    `Скорее посмотрите в админке.`;
+    `На проекте ${title} получено первое сообщение от пользователя.\n` +
+    `ID чата: ${formatChatId(chat)}.\n` +
+    `Сообщение: ${String(messageText || "").trim().slice(0, 500) || "—"}`;
+
+  try {
+    await sendTelegramMessage(project.telegram_chat_id, message);
+  } catch (err) {
+    console.warn("telegram notify failed", err?.message || err);
+  }
+}
+
+export async function notifyProjectAboutContacts(project, chat, contacts, messageText) {
+  if (!project?.telegram_chat_id || !isTelegramConfigured()) return;
+  if (!Array.isArray(contacts) || contacts.length === 0) return;
+  const title = formatProjectTitle(project);
+  const contactsLine = contacts.map((item) => item.value).join(", ");
+  const message =
+    `На проекте ${title} пользователь оставил контакты.\n` +
+    `ID чата: ${formatChatId(chat)}.\n` +
+    `Контакты: ${contactsLine}\n` +
+    `Сообщение: ${String(messageText || "").trim().slice(0, 500) || "—"}`;
 
   try {
     await sendTelegramMessage(project.telegram_chat_id, message);

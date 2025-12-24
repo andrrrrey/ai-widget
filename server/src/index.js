@@ -24,6 +24,7 @@ import {
   addMessage,
   setChatMode,
   touchChat,
+  countUserMessages,
 } from "./lib/store.js";
 import { widgetCors } from "./lib/widgetCors.js";
 import {
@@ -33,7 +34,12 @@ import {
   updateAssistantInstructions,
 } from "./lib/openai.js";
 import { getChatDisplayName } from "./lib/chatNames.js";
-import { consumeTelegramSecret, notifyProjectAboutNewChat } from "./lib/telegram.js";
+import {
+  consumeTelegramSecret,
+  notifyProjectAboutFirstMessage,
+  notifyProjectAboutContacts,
+  extractContactInfo,
+} from "./lib/telegram.js";
 
 dotenv.config({ path: "/var/www/ai-widget/server/.env" });
 
@@ -72,8 +78,6 @@ app.post("/api/widget/:projectId/chat/start", widgetCors, async (req, res) => {
     openaiApiKey: project.openai_api_key,
   });
 
-  notifyProjectAboutNewChat(project, chat);
-
   res.json({ chatId: chat.id, mode: chat.mode });
 });
 
@@ -92,6 +96,8 @@ app.get("/api/widget/:projectId/chat/:chatId/stream", widgetCors, async (req, re
 
   const chat = await getChatById(chatId);
   if (!chat || chat.project_id !== projectId) return res.status(404).json({ error: "chat_not_found" });
+  const project = await getProject(projectId);
+  if (!project) return res.status(404).json({ error: "project_not_found" });
 
   // SSE headers
   res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
@@ -121,6 +127,14 @@ app.get("/api/widget/:projectId/chat/:chatId/stream", widgetCors, async (req, re
   try {
     await touchChat(chatId);
     await addMessage({ chatId, role: "user", content: message });
+    const userMessageCount = await countUserMessages(chatId);
+    if (userMessageCount === 1) {
+      await notifyProjectAboutFirstMessage(project, chat, message);
+    }
+    const contacts = extractContactInfo(message);
+    if (contacts.length > 0) {
+      await notifyProjectAboutContacts(project, chat, contacts, message);
+    }
 
     if (chat.mode === "human") {
       send("waiting_for_human", { chatId });
@@ -128,12 +142,6 @@ app.get("/api/widget/:projectId/chat/:chatId/stream", widgetCors, async (req, re
       return res.end();
     }
 
-    const project = await getProject(projectId);
-    if (!project) {
-      send("error", { message: "project_not_found" });
-      send("done", { chatId });
-      return res.end();
-    }
     if (!project.assistant_id) {
       send("error", { message: "assistant_id is empty for this project" });
       send("done", { chatId });

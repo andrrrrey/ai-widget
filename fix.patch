@@ -1,9 +1,8 @@
 diff --git a/server/src/index.js b/server/src/index.js
-index f6284e4be72366aa4f83e776d4cf38b89aee2234..fda83d53130e8ff38832222f7459e67129c79195 100644
+index fda83d53130e8ff38832222f7459e67129c79195..b8e8e5108485702fb9c7ea5b7be3da9e7ab61941 100644
 --- a/server/src/index.js
 +++ b/server/src/index.js
-@@ -1,36 +1,38 @@
- import express from "express";
+@@ -2,160 +2,168 @@ import express from "express";
  import cookieParser from "cookie-parser";
  import path from "path";
  import { fileURLToPath } from "url";
@@ -14,8 +13,8 @@ index f6284e4be72366aa4f83e776d4cf38b89aee2234..fda83d53130e8ff38832222f7459e671
  import {
    createUser,
    listUsers,
-+  updateUserPassword,
-+  deleteUser,
+   updateUserPassword,
+   deleteUser,
    findUserByEmail,
    createProject,
    listProjects,
@@ -29,6 +28,7 @@ index f6284e4be72366aa4f83e776d4cf38b89aee2234..fda83d53130e8ff38832222f7459e671
    addMessage,
    setChatMode,
    touchChat,
++  countUserMessages,
  } from "./lib/store.js";
  import { widgetCors } from "./lib/widgetCors.js";
  import {
@@ -38,668 +38,308 @@ index f6284e4be72366aa4f83e776d4cf38b89aee2234..fda83d53130e8ff38832222f7459e671
    updateAssistantInstructions,
  } from "./lib/openai.js";
  import { getChatDisplayName } from "./lib/chatNames.js";
- import { consumeTelegramSecret, notifyProjectAboutNewChat } from "./lib/telegram.js";
+-import { consumeTelegramSecret, notifyProjectAboutNewChat } from "./lib/telegram.js";
++import {
++  consumeTelegramSecret,
++  notifyProjectAboutFirstMessage,
++  notifyProjectAboutContacts,
++  extractContactInfo,
++} from "./lib/telegram.js";
  
  dotenv.config({ path: "/var/www/ai-widget/server/.env" });
-@@ -216,50 +218,64 @@ app.post("/api/admin/projects", requireAdmin, async (req, res) => {
- });
  
- app.delete("/api/admin/projects/:projectId", requireAdmin, async (req, res) => {
-   const ok = await deleteProject(req.params.projectId);
-   if (!ok) return res.status(404).json({ error: "project_not_found" });
-   res.json({ ok: true });
- });
+ const NO_SOURCE_INSTRUCTION =
+   "Не указывай в ответах источник документа, из которого взята информация.";
+   
+ const app = express();
+ app.use(express.json({ limit: "2mb" }));
+ app.use(express.urlencoded({ extended: true }));
+ app.use(cookieParser());
  
- // Users management
- app.get("/api/admin/users", requireAdmin, async (req, res) => {
-   const items = await listUsers();
-   res.json({ items });
- });
+ const __filename = fileURLToPath(import.meta.url);
+ const __dirname = path.dirname(__filename);
  
- app.post("/api/admin/users", requireAdmin, async (req, res) => {
-   const email = String(req.body?.email || "").toLowerCase();
-   const password = String(req.body?.password || "").trim();
-   if (!email || !password) return res.status(400).json({ error: "email_and_password_required" });
-   if (await findUserByEmail(email)) return res.status(409).json({ error: "user_exists" });
+ // Static: widget + admin
+ app.use("/widget", express.static(path.join(__dirname, "../../widget")));
+ app.use("/admin", express.static(path.join(__dirname, "../../web-admin")));
  
-   const passwordHash = hashPassword(password);
-   const user = await createUser({ email, passwordHash, role: "user" });
-   res.json({ user });
- });
+ app.get("/health", (req, res) => res.json({ ok: true, ts: Date.now() }));
  
-+app.patch("/api/admin/users/:userId", requireAdmin, async (req, res) => {
-+  const password = String(req.body?.password || "").trim();
-+  if (!password) return res.status(400).json({ error: "password_required" });
-+  const user = await updateUserPassword(req.params.userId, hashPassword(password));
-+  if (!user) return res.status(404).json({ error: "user_not_found" });
-+  res.json({ user });
-+});
-+
-+app.delete("/api/admin/users/:userId", requireAdmin, async (req, res) => {
-+  const ok = await deleteUser(req.params.userId);
-+  if (!ok) return res.status(404).json({ error: "user_not_found" });
-+  res.json({ ok: true });
-+});
-+
  /**
-  * USER API (cookie auth)
+  * WIDGET API (CORS allowlist per project)
   */
- app.get("/api/user/projects", requireUser, async (req, res) => {
-   const items = await listProjects({ ownerId: req.auth.userId });
+ app.options("/api/widget/:projectId/*", widgetCors);
+ 
+ app.post("/api/widget/:projectId/chat/start", widgetCors, async (req, res) => {
+   const { projectId } = req.params;
+   const { visitorId } = req.body || {};
+   const project = await getProject(projectId);
+   if (!project) return res.status(404).json({ error: "project_not_found" });
+   if (!project.openai_api_key) return res.status(400).json({ error: "openai_api_key_missing" });
+ 
+   const chat = await createChat({
+     projectId,
+     visitorId: visitorId || null,
+     openaiApiKey: project.openai_api_key,
+   });
+ 
+-  notifyProjectAboutNewChat(project, chat);
+-
+   res.json({ chatId: chat.id, mode: chat.mode });
+ });
+ 
+ app.get("/api/widget/:projectId/chat/:chatId/messages", widgetCors, async (req, res) => {
+   const { projectId, chatId } = req.params;
+   const chat = await getChatById(chatId);
+   if (!chat || chat.project_id !== projectId) return res.status(404).json({ error: "chat_not_found" });
+   const items = await listMessages(chatId);
    res.json({ items });
  });
  
- app.post("/api/user/projects", requireUser, async (req, res) => {
-   const name = String(req.body?.name || "New Project");
-   const assistant_id = String(req.body?.assistant_id || "");
-   const openai_api_key = String(req.body?.openai_api_key || "");
-   const instructions = String(req.body?.instructions || "");
-   const allowed_origins = Array.isArray(req.body?.allowed_origins)
-     ? req.body.allowed_origins.map(String)
-     : [];
+ app.get("/api/widget/:projectId/chat/:chatId/stream", widgetCors, async (req, res) => {
+   const { projectId, chatId } = req.params;
+   const message = String(req.query.message || "").trim();
+   if (!message) return res.status(400).json({ error: "empty_message" });
  
-   const project = await createProject({
-     name,
-     assistantId: assistant_id,
-     openaiApiKey: openai_api_key,
-     instructions,
-     allowedOrigins: allowed_origins,
-     ownerId: req.auth.userId,
-   });
-@@ -350,51 +366,53 @@ app.get(
-       if (status === 404) {
-         console.info("assistant instructions fetch error (not found)", message);
-         return res.json({ ...payload, error: "assistant_not_found" });
-       }
+   const chat = await getChatById(chatId);
+   if (!chat || chat.project_id !== projectId) return res.status(404).json({ error: "chat_not_found" });
++  const project = await getProject(projectId);
++  if (!project) return res.status(404).json({ error: "project_not_found" });
  
-       console.warn("assistant instructions fetch error", message);
-       res.json(payload);
+   // SSE headers
+   res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+   res.setHeader("Cache-Control", "no-cache, no-transform");
+   res.setHeader("Connection", "keep-alive");
+   res.flushHeaders?.();
+ 
+   const send = (event, data) => {
+     res.write(`event: ${event}\n`);
+     res.write(`data: ${JSON.stringify(data)}\n\n`);
+   };
+ 
+   const sanitizeCitations = (text) => text.replace(/【[^】]*】/g, "");
+   let rawStream = "";
+   let sentClean = "";
+ 
+   const sendSanitizedToken = (token) => {
+     rawStream += token || "";
+     const cleaned = sanitizeCitations(rawStream);
+     const delta = cleaned.slice(sentClean.length);
+     if (delta) {
+       send("token", { t: delta });
+       sentClean = cleaned;
      }
-   }
- );
- 
- app.patch("/api/admin/projects/:projectId", requireAdmin, async (req, res) => {
-   const current = await getProject(req.params.projectId);
-   if (!current) return res.status(404).json({ error: "project_not_found" });
+   };
    
-   const patch = {};
+   try {
+     await touchChat(chatId);
+     await addMessage({ chatId, role: "user", content: message });
++    const userMessageCount = await countUserMessages(chatId);
++    if (userMessageCount === 1) {
++      await notifyProjectAboutFirstMessage(project, chat, message);
++    }
++    const contacts = extractContactInfo(message);
++    if (contacts.length > 0) {
++      await notifyProjectAboutContacts(project, chat, contacts, message);
++    }
  
-   if (typeof req.body?.name === "string") patch.name = req.body.name;
-   if (typeof req.body?.assistant_id === "string") patch.assistant_id = req.body.assistant_id;
- 
-   // ✅ ВОТ ЭТА СТРОКА РЕШАЕТ ПРОБЛЕМУ: позволяет сохранять API key при PATCH
-   if (typeof req.body?.openai_api_key === "string") patch.openai_api_key = req.body.openai_api_key;
- 
-   if (typeof req.body?.instructions === "string") patch.instructions = req.body.instructions;
-   if (Array.isArray(req.body?.allowed_origins)) patch.allowed_origins = req.body.allowed_origins.map(String);
--  if (typeof req.body?.owner_id === "string") patch.owner_id = req.body.owner_id;
-+  if (Object.hasOwn(req.body || {}, "owner_id")) {
-+    patch.owner_id = typeof req.body.owner_id === "string" && req.body.owner_id ? req.body.owner_id : null;
-+  }
- 
-   if (typeof req.body?.telegram_code === "string") {
-     const code = req.body.telegram_code.trim();
-     if (code) {
-       const token = await consumeTelegramSecret(code);
-       if (!token) return res.status(400).json({ error: "invalid_telegram_code" });
-       patch.telegram_chat_id = token.chat_id;
-       patch.telegram_connected_at = new Date();
+     if (chat.mode === "human") {
+       send("waiting_for_human", { chatId });
+       send("done", { chatId });
+       return res.end();
      }
-   }
  
-   if (req.body?.unlink_telegram === true) {
-     patch.telegram_chat_id = null;
-     patch.telegram_connected_at = null;
-   }
+-    const project = await getProject(projectId);
+-    if (!project) {
+-      send("error", { message: "project_not_found" });
+-      send("done", { chatId });
+-      return res.end();
+-    }
+     if (!project.assistant_id) {
+       send("error", { message: "assistant_id is empty for this project" });
+       send("done", { chatId });
+       return res.end();
+     }
+     if (!project.openai_api_key) {
+       send("error", { message: "openai_api_key is empty for this project" });
+       send("done", { chatId });
+       return res.end();
+     }
  
-   const project = await updateProject(req.params.projectId, patch);
-   if (!project) return res.status(404).json({ error: "project_not_found" });
-   
-   const assistantId = patch.assistant_id ?? current.assistant_id;
-   const apiKey = patch.openai_api_key ?? current.openai_api_key;
-   const instructions = patch.instructions ?? current.instructions;
+     send("meta", { chatId, mode: "assistant" });
  
-   if (typeof req.body?.instructions === "string" && assistantId && apiKey) {
-     try {
+     const additionalInstructions = [project.instructions, NO_SOURCE_INSTRUCTION]
+       .filter(Boolean)
+       .join("\n\n");
+       
+     await runAssistantStream({
+       apiKey: project.openai_api_key,
+       threadId: chat.thread_id,
+       assistantId: project.assistant_id,
+       additionalInstructions,
+       userMessage: message,
+       onToken: (t) => sendSanitizedToken(t),
+       onTool: (tool) => send("tool", tool),
 diff --git a/server/src/lib/store.js b/server/src/lib/store.js
-index 0dc5e1d1a535c0c7b3dbff21b17ee4830016ecc5..7e0fff8046ff83eb7c2dcb1baa3c8ad572b5bbef 100644
+index 7e0fff8046ff83eb7c2dcb1baa3c8ad572b5bbef..953b1af9383cc2f93279165125e06f1b408f365d 100644
 --- a/server/src/lib/store.js
 +++ b/server/src/lib/store.js
-@@ -1,46 +1,60 @@
- import { sql } from "./db.js";
- import { v4 as uuidv4 } from "uuid";
- import { ensureThread } from "./openai.js";
+@@ -132,34 +132,42 @@ export async function getChatById(chatId) {
  
- export async function createUser({ email, passwordHash, role = "user" }) {
-   const row = await sql.one(
-     `INSERT INTO users (id, email, password_hash, role)
-      VALUES ($1,$2,$3,$4) RETURNING id, email, role, created_at`,
-     [uuidv4(), email, passwordHash, role]
+ export async function listChats({ projectId, status = null, mode = null }) {
+   const where = ["project_id=$1"];
+   const params = [projectId];
+   let i = 2;
+ 
+   if (status) { where.push(`status=$${i++}`); params.push(status); }
+   if (mode) { where.push(`mode=$${i++}`); params.push(mode); }
+ 
+   const q = `SELECT * FROM chats WHERE ${where.join(" AND ")} ORDER BY updated_at DESC LIMIT 200`;
+   return await sql.many(q, params);
+ }
+ 
+ export async function listMessages(chatId) {
+   return await sql.many("SELECT * FROM messages WHERE chat_id=$1 ORDER BY created_at ASC", [chatId]);
+ }
+ 
+ export async function addMessage({ chatId, role, content }) {
+   return await sql.one(
+     `INSERT INTO messages (id, chat_id, role, content)
+      VALUES ($1,$2,$3,$4) RETURNING *`,
+     [uuidv4(), chatId, role, content]
    );
+ }
+ 
++export async function countUserMessages(chatId) {
++  const row = await sql.one(
++    "SELECT COUNT(*)::int AS count FROM messages WHERE chat_id=$1 AND role='user'",
++    [chatId]
++  );
++  return row?.count ?? 0;
++}
++
+ export async function setChatMode(chatId, mode) {
+   const row = await sql.oneOrNone("UPDATE chats SET mode=$2, updated_at=NOW() WHERE id=$1 RETURNING *", [chatId, mode]);
+   if (!row) throw new Error("chat_not_found");
    return row;
  }
  
- export async function findUserByEmail(email) {
-   return await sql.oneOrNone(`SELECT * FROM users WHERE email=$1`, [email]);
+ export async function touchChat(chatId) {
+   await sql.exec("UPDATE chats SET updated_at=NOW(), last_seen_at=NOW() WHERE id=$1", [chatId]);
  }
- 
- export async function listUsers() {
-   return await sql.many(`SELECT id, email, role, created_at FROM users ORDER BY created_at DESC`);
- }
- 
-+export async function updateUserPassword(userId, passwordHash) {
-+  return await sql.oneOrNone(
-+    "UPDATE users SET password_hash=$2 WHERE id=$1 RETURNING id, email, role, created_at",
-+    [userId, passwordHash]
-+  );
-+}
-+
-+export async function deleteUser(userId) {
-+  const existing = await sql.oneOrNone("SELECT id FROM users WHERE id=$1", [userId]);
-+  if (!existing) return false;
-+  await sql.exec("DELETE FROM users WHERE id=$1", [userId]);
-+  return true;
-+}
-+
- export async function createProject({
-   name,
-   assistantId,
-   openaiApiKey,
-   instructions,
-   allowedOrigins,
-   ownerId = null,
-   telegramChatId = null,
- }) {
-   const id = uuidv4();
-   const row = await sql.one(
-     `INSERT INTO projects (id, name, assistant_id, openai_api_key, instructions, allowed_origins, owner_id, telegram_chat_id, telegram_connected_at)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-     [
-       id,
-       name || "New Project",
-       assistantId || "",
-       openaiApiKey || "",
-       instructions || "",
-       Array.isArray(allowedOrigins) ? allowedOrigins : [],
-       ownerId || null,
-       telegramChatId || null,
-       telegramChatId ? new Date() : null,
-     ]
+diff --git a/server/src/lib/telegram.js b/server/src/lib/telegram.js
+index fb225b6d17cbfd42f7fa69c172c45ee5dc4ab3d4..5870c038446570df6d09286147f26e4ec5b32ecd 100644
+--- a/server/src/lib/telegram.js
++++ b/server/src/lib/telegram.js
+@@ -44,39 +44,106 @@ export async function consumeTelegramSecret(secret) {
+        SET used_at=NOW()
+      WHERE secret=$1 AND used_at IS NULL
+      RETURNING chat_id, username, created_at`,
+     [secret]
    );
-diff --git a/web-admin/admin.css b/web-admin/admin.css
-index 6d5dea05a258d5bb92c3135e6d8384dc90cee371..f14aeb1fa5f61864ede2f40087218fdfb630484e 100644
---- a/web-admin/admin.css
-+++ b/web-admin/admin.css
-@@ -41,56 +41,60 @@ h3{margin:0;font-size:17px}
- .chatLayout{display:grid;grid-template-columns:420px 1fr;gap:20px;align-items:start}
- .chatListCard{background:linear-gradient(135deg,rgba(93,90,246,0.08),rgba(93,90,246,0.02));border:1px solid var(--border);border-radius:18px;padding:16px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px}
- .listHead{display:flex;justify-content:space-between;align-items:center}
- .placeholder{height:100%;display:flex;align-items:center;justify-content:center}
- .empty{text-align:center;padding:40px;background:rgba(93,90,246,0.04);border:1px dashed var(--border);border-radius:16px}
- 
- .row{display:flex;gap:10px;align-items:center}
- .row.tight select{flex:1}
- 
- .muted{color:var(--muted);font-size:13px;margin:0}
- .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;overflow-wrap:anywhere}
- 
- input,textarea,select{width:100%;border-radius:12px;border:1px solid var(--border);background:#f9fafb;color:var(--text);padding:10px 12px;font-size:14px;outline:none;transition:border-color .2s,box-shadow .2s}
- input:focus,textarea:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(93,90,246,0.15);background:white}
- textarea{resize:vertical}
- 
- button{border-radius:12px;border:1px solid transparent;background:var(--accent);color:white;padding:10px 14px;font-weight:700;cursor:pointer;transition:transform .1s ease,box-shadow .2s,background .2s}
- button:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(93,90,246,0.25)}
- button:active{transform:translateY(0)}
- button.ghost{background:transparent;color:var(--text);border-color:var(--border);box-shadow:none}
- button.ghost:hover{background:#eef2ff}
- button.icon{padding:8px 10px}
- button.text{color:var(--muted);border-color:transparent}
- button.primary{background:linear-gradient(135deg,#5d5af6,#7c5dfa);color:white}
- button.full{width:100%}
-+button.danger{color:var(--bad);border-color:rgba(225,29,72,0.2);background:transparent}
-+button.danger:hover{background:rgba(225,29,72,0.08)}
- 
- .list{display:flex;flex-direction:column;gap:10px;max-height:620px;overflow:auto;padding-right:6px}
- .item{padding:12px;border:1px solid var(--border);border-radius:14px;cursor:pointer;background:white;transition:border-color .2s,transform .1s}
- .item:hover{border-color:var(--accent);transform:translateY(-1px)}
- .pill{display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;border:1px solid var(--border);font-size:12px;color:var(--muted);gap:6px}
--.userRow{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--border);border-radius:14px;padding:12px;background:white}
-+.userRow{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--border);border-radius:14px;padding:12px;background:white;gap:12px;flex-wrap:wrap}
-+.userInfo{display:flex;flex-direction:column;gap:4px;min-width:220px;flex:1}
-+.userActions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
- 
- .msgs{max-height:620px;overflow:auto;border:1px solid var(--border);border-radius:14px;padding:12px;background:#f8fafc;display:flex;flex-direction:column;gap:10px}
- .msg{display:flex}
- .msg.user{justify-content:flex-end}
- .msg.assistant,.msg.human{justify-content:flex-start}
- .bubble{max-width:78%;padding:12px 14px;border-radius:14px;white-space:pre-wrap;word-break:break-word;font-size:14px;line-height:1.35;box-shadow:var(--shadow);background:white}
- .msg.user .bubble{background:#5d5af6;color:white;box-shadow:none;border-bottom-right-radius:6px}
- .msg.assistant .bubble{background:white;border:1px solid var(--border);border-bottom-left-radius:6px}
- .msg.human .bubble{background:rgba(93,90,246,0.12);border:1px solid rgba(93,90,246,0.35);border-bottom-left-radius:6px}
- 
- .err{color:var(--bad);margin-top:4px;font-size:13px}
- .ok{color:var(--good);font-size:13px}
- 
- .settingsCard{display:flex;flex-direction:column;gap:16px}
- .formGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
- 
- @media (max-width:1180px){
-   .topbar{flex-direction:column;align-items:stretch}
-   .topbarActions{margin-left:0}
  }
  
- @media (max-width:980px){
-   .chatLayout{grid-template-columns:1fr}
-   .chatBox{order:2}
-   .chatListCard{order:1}
-diff --git a/web-admin/admin.js b/web-admin/admin.js
-index 6a4774d9ed27e87b51a9aae73e673b5fc9899b30..e57f23c91d6c6d8ad466e2d91b85ee67ed750659 100644
---- a/web-admin/admin.js
-+++ b/web-admin/admin.js
-@@ -1,34 +1,35 @@
- const $ = (s) => document.querySelector(s);
+ export async function sendTelegramMessage(chatId, text) {
+   if (!TELEGRAM_TOKEN || !chatId || !text) return false;
  
- let selectedProjectId = null;
- let selectedChatId = null;
- let selectedChatName = null;
- let pollTimer = null;
- let projectsCache = [];
- let usersCache = [];
- let currentSession = null;
-+let currentProjectOwnerId = null;
- 
- const isAdmin = () => currentSession?.role === "admin";
- 
- function projectApiBase(){
-   return isAdmin() ? "/api/admin/projects" : "/api/user/projects";
- }
- 
- function chatApiBase(){
-   return isAdmin() ? "/api/admin/chats" : "/api/user/chats";
- }
- 
- async function fetchAssistantInstructions(projectId){
-   if(!isAdmin()) return null;
-   try {
-     const data = await api(`/api/admin/projects/${projectId}/assistant-instructions`);
-     return data?.instructions || "";
-   } catch (err) {
-     console.warn("assistant instructions load failed", err);
-     return null;
-   }
- }
- 
- async function api(path, opts={}){
-   const r = await fetch(path, { credentials:"include", ...opts });
-   const ct = r.headers.get("content-type")||"";
-@@ -52,52 +53,52 @@ function showPage(page){
-     const el = $(sel);
-     if(el) el.style.display = key === page ? "block" : "none";
-   });
- }
- 
- function applyRoleVisibility(){
-   document.querySelectorAll(".adminOnly").forEach(el => {
-     el.style.display = isAdmin() ? "" : "none";
-   });
- }
- 
- async function login(){
-   $("#loginErr").textContent = "";
-   const login = $("#login").value.trim();
-   const password = $("#password").value;
-   const session = await api("/api/admin/login", {
-     method:"POST",
-     headers:{ "Content-Type":"application/json" },
-     body: JSON.stringify({ login, password })
-   });
-   currentSession = session;
-   applyRoleVisibility();
-   $("#loginBox").style.display = "none";
-   $("#app").style.display = "flex";
-   showPage("chats");
--  await refreshProjects(true);
-   if(isAdmin()) await refreshUsers();
-+  await refreshProjects(true);
- }
- 
- async function logout(){
-   await api("/api/admin/logout", { method:"POST" });
-   location.reload();
- }
- 
- async function refreshProjects(autoSelectFirst=false){
-   const j = await api(projectApiBase());
-   const items = j.items || [];
-   projectsCache = items;
-   const sel = $("#projectSelect");
-   sel.innerHTML = "";
-   for(const p of items){
-     const opt = document.createElement("option");
-     opt.value = p.id;
-     opt.textContent = p.name;
-     sel.appendChild(opt);
-   }
- 
-   if(autoSelectFirst && items[0]){
-     selectedProjectId = items[0].id;
-     sel.value = selectedProjectId;
-   } else if(selectedProjectId){
-     sel.value = selectedProjectId;
-@@ -107,113 +108,136 @@ async function refreshProjects(autoSelectFirst=false){
-   }
- 
-   if(selectedProjectId) await loadProject(selectedProjectId);
-   await refreshChats();
- }
- 
- async function createProject(){
-   const name = prompt("Название проекта", "Новый проект")?.trim();
-   if(!name) return;
-   const j = await api(projectApiBase(), {
-     method:"POST",
-     headers:{ "Content-Type":"application/json" },
-     body: JSON.stringify({ name, openai_api_key:"", assistant_id:"", instructions:"", allowed_origins:[] })
-   });
-   selectedProjectId = j.project.id;
-   await refreshProjects(false);
-   $("#projectSelect").value = selectedProjectId;
-   await loadProject(selectedProjectId);
-   if(isAdmin()) await refreshChats();
- }
- 
- async function loadProject(projectId){
-   const j = await api(`${projectApiBase()}/${projectId}`);
-   const p = j.project;
-   selectedProjectId = p.id;
-+  currentProjectOwnerId = p.owner_id || null;
- 
-   const projectName = projectsCache.find(x => x.id === p.id)?.name || "Проект";
-   $("#projectBadge").textContent = projectName;
-   $("#projectId").textContent = p.id;
-   $("#apiKey").value = p.openai_api_key || "";
-   $("#assistantId").value = p.assistant_id || "";
-   let instructions = p.instructions || "";
-   if(isAdmin() && p.assistant_id){
-     const ai = await fetchAssistantInstructions(p.id);
-     if(typeof ai === "string" && ai) instructions = ai;
-   }
-   $("#instructions").value = instructions;
-   $("#origins").value = (p.allowed_origins || []).join("\n");
- 
-+  if(isAdmin()) renderOwnerSelect(currentProjectOwnerId);
-   renderTelegramSection(p);
- }
- 
- async function saveProject(){
-   if(!selectedProjectId) return;
-   $("#saveOk").textContent = "";
- 
-   const openai_api_key = $("#apiKey").value.trim();
-   const assistant_id = $("#assistantId").value.trim();
-   const instructions = $("#instructions").value;
-   const allowed_origins = $("#origins").value
-     .split("\n")
-     .map(s => s.trim())
-     .filter(Boolean);
-+  const owner_id = isAdmin()
-+    ? ($("#projectOwner")?.value?.trim() || null)
-+    : undefined;
- 
-   const url = `${projectApiBase()}/${selectedProjectId}`;
- 
-   await api(url, {
-     method:"PATCH",
-     headers:{ "Content-Type":"application/json" },
--    body: JSON.stringify({ openai_api_key, assistant_id, instructions, allowed_origins })
-+    body: JSON.stringify({ openai_api_key, assistant_id, instructions, allowed_origins, owner_id })
+   const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
+   const body = { chat_id: chatId, text };
+   const r = await fetch(url, {
+     method: "POST",
+     headers: { "Content-Type": "application/json" },
+     body: JSON.stringify(body),
    });
  
-+  if(isAdmin()) currentProjectOwnerId = owner_id;
-   $("#saveOk").textContent = "Сохранено";
-   setTimeout(()=> $("#saveOk").textContent = "", 1400);
- }
- 
- function renderTelegramSection(project){
-   const statusEl = $("#telegramStatus");
-   const infoEl = $("#telegramInfo");
-   const errEl = $("#telegramErr");
-   const okEl = $("#telegramOk");
-   errEl.textContent = "";
-   okEl.textContent = "";
- 
-   if(project.telegram_chat_id){
-     statusEl.textContent = "Подключено";
-     statusEl.className = "pill";
-     const connectedAt = project.telegram_connected_at
-       ? new Date(project.telegram_connected_at).toLocaleString()
-       : "";
-     infoEl.textContent = `Чат ID: ${project.telegram_chat_id}${connectedAt ? ` • с ${connectedAt}` : ""}`;
-   } else {
-     statusEl.textContent = "Не подключено";
-     statusEl.className = "pill muted";
-     infoEl.textContent = "Получите код в Telegram-боте AI Widget и вставьте его здесь.";
+   if (!r.ok) {
+     const payload = await r.text();
+     throw new Error(`telegram_error_${r.status}: ${payload}`);
    }
+   return true;
  }
  
-+function renderOwnerSelect(ownerId){
-+  const select = $("#projectOwner");
-+  if(!select) return;
-+  select.innerHTML = "";
-+  const optNone = document.createElement("option");
-+  optNone.value = "";
-+  optNone.textContent = "Без владельца";
-+  select.appendChild(optNone);
-+  for(const u of usersCache){
-+    const opt = document.createElement("option");
-+    opt.value = u.id;
-+    opt.textContent = u.email;
-+    select.appendChild(opt);
-+  }
-+  select.value = ownerId || "";
+-export async function notifyProjectAboutNewChat(project, chat) {
++function formatProjectTitle(project) {
++  return project?.name ? `"${project.name}"` : "вашем сайте";
 +}
 +
- async function linkTelegram(){
-   if(!selectedProjectId) return;
-   const code = $("#telegramCode").value.trim();
-   $("#telegramErr").textContent = "";
-   $("#telegramOk").textContent = "";
-   if(!code){
-     $("#telegramErr").textContent = "Введите код из бота";
-     return;
-   }
++function formatChatId(chat) {
++  return chat?.id || "неизвестен";
++}
++
++function normalizeMatch(value) {
++  return String(value || "").trim();
++}
++
++export function extractContactInfo(text) {
++  if (!text) return [];
++  const candidates = [];
++  const emailMatches = text.match(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi) || [];
++  emailMatches.forEach((value) => candidates.push({ type: "email", value }));
++
++  const phoneMatches = text.match(/(\+?\d[\d\s().-]{6,}\d)/g) || [];
++  phoneMatches.forEach((value) => candidates.push({ type: "phone", value }));
++
++  const tgHandleMatches = text.match(/(?:^|\\s)@([a-zA-Z0-9_]{5,})/g) || [];
++  tgHandleMatches.forEach((value) => candidates.push({ type: "telegram", value }));
++
++  const tmeMatches = text.match(/t\\.me\\/([a-zA-Z0-9_]+)/gi) || [];
++  tmeMatches.forEach((value) => candidates.push({ type: "telegram", value }));
++
++  const waMatches = text.match(/wa\\.me\\/\\d+/gi) || [];
++  waMatches.forEach((value) => candidates.push({ type: "whatsapp", value }));
++
++  const tgLabelMatches = text.match(/(?:телеграм|telegram|tg)[:\\s]+([\\w@.+-]{3,})/gi) || [];
++  tgLabelMatches.forEach((value) => candidates.push({ type: "telegram", value }));
++
++  const waLabelMatches = text.match(/(?:whatsapp|ватсап|ватап)[:\\s]+([\\w@.+-]{3,})/gi) || [];
++  waLabelMatches.forEach((value) => candidates.push({ type: "whatsapp", value }));
++
++  const unique = new Map();
++  candidates.forEach((item) => {
++    const cleaned = normalizeMatch(item.value);
++    if (!cleaned) return;
++    const key = `${item.type}:${cleaned.toLowerCase()}`;
++    if (!unique.has(key)) {
++      unique.set(key, { type: item.type, value: cleaned });
++    }
++  });
++
++  return Array.from(unique.values());
++}
++
++export async function notifyProjectAboutFirstMessage(project, chat, messageText) {
++  if (!project?.telegram_chat_id || !isTelegramConfigured()) return;
++  const title = formatProjectTitle(project);
++  const message =
++    `На проекте ${title} получено первое сообщение от пользователя.\n` +
++    `ID чата: ${formatChatId(chat)}.\n` +
++    `Сообщение: ${String(messageText || "").trim().slice(0, 500) || "—"}`;
++
++  try {
++    await sendTelegramMessage(project.telegram_chat_id, message);
++  } catch (err) {
++    console.warn("telegram notify failed", err?.message || err);
++  }
++}
++
++export async function notifyProjectAboutContacts(project, chat, contacts, messageText) {
+   if (!project?.telegram_chat_id || !isTelegramConfigured()) return;
+-  const title = project?.name ? `"${project.name}"` : "вашем сайте";
++  if (!Array.isArray(contacts) || contacts.length === 0) return;
++  const title = formatProjectTitle(project);
++  const contactsLine = contacts.map((item) => item.value).join(", ");
+   const message =
+-    `На проекте ${title} открыт новый диалог.\n` +
+-    `ID чата: ${chat?.id || "неизвестен"}.\n` +
+-    `Скорее посмотрите в админке.`;
++    `На проекте ${title} пользователь оставил контакты.\n` +
++    `ID чата: ${formatChatId(chat)}.\n` +
++    `Контакты: ${contactsLine}\n` +
++    `Сообщение: ${String(messageText || "").trim().slice(0, 500) || "—"}`;
  
    try {
-     await api(`${projectApiBase()}/${selectedProjectId}`, {
-       method:"PATCH",
-       headers:{ "Content-Type":"application/json" },
-       body: JSON.stringify({ telegram_code: code })
-     });
-     $("#telegramOk").textContent = "Телеграм подключён";
-     $("#telegramCode").value = "";
-     await loadProject(selectedProjectId);
-   } catch(err){
-     const codeName = err?.data?.error || err?.message || "api_error";
-     if(codeName === "invalid_telegram_code"){
-       $("#telegramErr").textContent = "Неверный или использованный код";
-     } else {
-       $("#telegramErr").textContent = "Не удалось подключить Телеграм";
-@@ -368,74 +392,114 @@ async function sendHuman(e){
+     await sendTelegramMessage(project.telegram_chat_id, message);
    } catch (err) {
-     console.warn("takeover failed", err);
-     return;
-   }
-   
-   await api(`${chatApiBase()}/${selectedChatId}/message`, {
-     method:"POST",
-     headers:{ "Content-Type":"application/json" },
-     body: JSON.stringify({ text })
-   });
-   textEl.value = "";
-   await refreshChatView();
- }
- 
- function resetChatView(){
-   selectedChatId = null;
-   $("#chatBox").style.display = "none";
-   $("#chatPlaceholder").style.display = "flex";
- }
- 
- async function refreshUsers(){
-   if(!isAdmin()) return;
-   const j = await api("/api/admin/users");
-   usersCache = j.items || [];
-   renderUsers(usersCache);
-+  if(selectedProjectId) renderOwnerSelect(currentProjectOwnerId);
- }
- 
- function renderUsers(items){
-   const box = $("#userList");
-   box.innerHTML = "";
-   if(!items.length){
-     box.innerHTML = `<div class="muted">Пока нет пользователей</div>`;
-     return;
-   }
- 
-   for(const u of items){
-     const div = document.createElement("div");
-     div.className = "userRow";
-     div.innerHTML = `
--      <div>
-+      <div class="userInfo">
-         <div class="mono">${escapeHtml(u.email)}</div>
-         <div class="muted">Создан: ${new Date(u.created_at).toLocaleString()}</div>
-       </div>
--      <span class="pill">${escapeHtml(u.role)}</span>
-+      <div class="userActions">
-+        <span class="pill">${escapeHtml(u.role)}</span>
-+        <button class="ghost btnUserPassword" type="button">Сменить пароль</button>
-+        <button class="ghost danger btnUserDelete" type="button">Удалить</button>
-+      </div>
-     `;
-+    div.querySelector(".btnUserPassword").addEventListener("click", ()=> changeUserPassword(u));
-+    div.querySelector(".btnUserDelete").addEventListener("click", ()=> removeUser(u));
-     box.appendChild(div);
+     console.warn("telegram notify failed", err?.message || err);
    }
  }
- 
-+async function changeUserPassword(user){
-+  const password = prompt(`Новый пароль для ${user.email}`)?.trim();
-+  if(!password) return;
-+  $("#userErr").textContent = "";
-+  $("#userOk").textContent = "";
-+  try{
-+    await api(`/api/admin/users/${user.id}`, {
-+      method:"PATCH",
-+      headers:{ "Content-Type":"application/json" },
-+      body: JSON.stringify({ password })
-+    });
-+    $("#userOk").textContent = "Пароль обновлён";
-+    setTimeout(()=> $("#userOk").textContent = "", 2000);
-+  } catch(err){
-+    $("#userErr").textContent = "Не удалось обновить пароль";
-+  }
-+}
-+
-+async function removeUser(user){
-+  if(!confirm(`Удалить пользователя ${user.email}?`)) return;
-+  $("#userErr").textContent = "";
-+  $("#userOk").textContent = "";
-+  try{
-+    await api(`/api/admin/users/${user.id}`, { method:"DELETE" });
-+    $("#userOk").textContent = "Пользователь удалён";
-+    await refreshUsers();
-+    if(selectedProjectId) await loadProject(selectedProjectId);
-+    setTimeout(()=> $("#userOk").textContent = "", 2000);
-+  } catch(err){
-+    $("#userErr").textContent = "Не удалось удалить пользователя";
-+  }
-+}
-+
- async function createUserFromForm(e){
-   if(!isAdmin()) return;
-   e.preventDefault();
-   $("#userErr").textContent = "";
-   $("#userOk").textContent = "";
-   const email = $("#newUserEmail").value.trim().toLowerCase();
-   const password = $("#newUserPassword").value;
-   if(!email || !password){
-     $("#userErr").textContent = "Укажите email и пароль";
-     return;
-   }
- 
-   try{
-     await api("/api/admin/users", {
-       method:"POST",
-       headers:{ "Content-Type":"application/json" },
-       body: JSON.stringify({ email, password })
-     });
- 
-     $("#newUserEmail").value = "";
-     $("#newUserPassword").value = "";
-     $("#userOk").textContent = "Пользователь создан";
-     await refreshUsers();
-     setTimeout(()=> $("#userOk").textContent = "", 2000);
-   } catch(err){
-diff --git a/web-admin/index.html b/web-admin/index.html
-index a995464d02a9a5282b2fca06bf9489c5d3674f0d..c3c96e70a7acb9a58dc407e10c518ad404f28961 100644
---- a/web-admin/index.html
-+++ b/web-admin/index.html
-@@ -125,50 +125,57 @@
-             <div class="row">
-               <button id="btnBackToChats" class="ghost">← Назад к чатам</button>
-             </div>
-           </div>
- 
-           <div class="settingsCard card">
-             <div class="muted">Project ID (вставляется в data-project-id):</div>
-             <div class="mono" id="projectId"></div>
- 
-             <div class="formGrid">
-               <div>
-                 <label class="muted">OpenAI API key (клиента)</label>
-                 <input id="apiKey" placeholder="sk-..."/>
-               </div>
-               <div>
-                 <label class="muted">OpenAI assistant_id</label>
-                 <input id="assistantId" placeholder="asst_..."/>
-               </div>
-             </div>
- 
-             <div>
-               <label class="muted">Allowed origins (по одному в строке)</label>
-               <textarea id="origins" rows="4" placeholder="https://clientsite.com&#10;https://www.clientsite.com"></textarea>
-             </div>
- 
-+            <div class="formGrid adminOnly">
-+              <div>
-+                <label class="muted">Владелец проекта</label>
-+                <select id="projectOwner"></select>
-+              </div>
-+            </div>
-+
-             <div>
-               <label class="muted">Инструкция (additional_instructions)</label>
-               <textarea id="instructions" rows="6" placeholder="Инструкция для ассистента..."></textarea>
-             </div>
- 
-             <div class="formGrid" style="align-items:flex-end">
-               <div>
-                 <label class="muted">Уведомления в Telegram</label>
-                 <div id="telegramStatus" class="pill muted">Не подключено</div>
-                 <div class="muted" id="telegramInfo" style="margin-top:6px"></div>
-               </div>
-               <div>
-                 <label class="muted">Telegram код (из бота)</label>
-                 <div class="row tight">
-                   <input id="telegramCode" placeholder="секретный код" />
-                   <button id="btnLinkTelegram" type="button">Привязать</button>
-                   <button id="btnUnlinkTelegram" type="button" class="ghost">Отвязать</button>
-                 </div>
-                 <div class="row" style="justify-content:space-between;margin-top:6px">
-                   <span id="telegramErr" class="err"></span>
-                   <span id="telegramOk" class="ok"></span>
-                 </div>
-               </div>
-             </div>
- 

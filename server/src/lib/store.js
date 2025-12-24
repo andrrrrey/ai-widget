@@ -154,6 +154,14 @@ export async function addMessage({ chatId, role, content }) {
   );
 }
 
+export async function countUserMessages(chatId) {
+  const row = await sql.one(
+    "SELECT COUNT(*)::int AS count FROM messages WHERE chat_id=$1 AND role='user'",
+    [chatId]
+  );
+  return row?.count ?? 0;
+}
+
 export async function setChatMode(chatId, mode) {
   const row = await sql.oneOrNone("UPDATE chats SET mode=$2, updated_at=NOW() WHERE id=$1 RETURNING *", [chatId, mode]);
   if (!row) throw new Error("chat_not_found");
