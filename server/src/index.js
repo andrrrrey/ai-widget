@@ -45,7 +45,11 @@ dotenv.config({ path: "/var/www/ai-widget/server/.env" });
 
 const NO_SOURCE_INSTRUCTION =
   "Не указывай в ответах источник документа, из которого взята информация.";
-  
+
+const ASSISTANT_ID_PATTERN = /^asst_[a-zA-Z0-9]{12,}$/;
+
+const isLikelyAssistantId = (value) => ASSISTANT_ID_PATTERN.test(String(value || ""));
+
 const app = express();
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
@@ -144,6 +148,11 @@ app.get("/api/widget/:projectId/chat/:chatId/stream", widgetCors, async (req, re
 
     if (!project.assistant_id) {
       send("error", { message: "assistant_id is empty for this project" });
+      send("done", { chatId });
+      return res.end();
+    }
+    if (!isLikelyAssistantId(project.assistant_id)) {
+      send("error", { message: "assistant_id is invalid for this project" });
       send("done", { chatId });
       return res.end();
     }
@@ -355,6 +364,14 @@ app.get(
 
     const fallback = project.instructions || "";
     
+    if (!isLikelyAssistantId(project.assistant_id)) {
+      return res.json({
+        instructions: fallback,
+        source: "project",
+        error: "assistant_id_invalid",
+      });
+    }
+    
     try {
       const instructions = await fetchAssistantInstructions({
         apiKey: project.openai_api_key,
@@ -422,7 +439,12 @@ app.patch("/api/admin/projects/:projectId", requireAdmin, async (req, res) => {
   const apiKey = patch.openai_api_key ?? current.openai_api_key;
   const instructions = patch.instructions ?? current.instructions;
 
-  if (typeof req.body?.instructions === "string" && assistantId && apiKey) {
+  if (
+    typeof req.body?.instructions === "string" &&
+    assistantId &&
+    apiKey &&
+    isLikelyAssistantId(assistantId)
+  ) {
     try {
       await updateAssistantInstructions({ apiKey, assistantId, instructions });
     } catch (err) {
