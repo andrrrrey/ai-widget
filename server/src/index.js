@@ -9,6 +9,8 @@ import { requireAdmin, requireUser, loginHandler, logoutHandler, hashPassword } 
 import {
   createUser,
   listUsers,
+  updateUserPassword,
+  deleteUser,
   findUserByEmail,
   createProject,
   listProjects,
@@ -238,6 +240,20 @@ app.post("/api/admin/users", requireAdmin, async (req, res) => {
   res.json({ user });
 });
 
+app.patch("/api/admin/users/:userId", requireAdmin, async (req, res) => {
+  const password = String(req.body?.password || "").trim();
+  if (!password) return res.status(400).json({ error: "password_required" });
+  const user = await updateUserPassword(req.params.userId, hashPassword(password));
+  if (!user) return res.status(404).json({ error: "user_not_found" });
+  res.json({ user });
+});
+
+app.delete("/api/admin/users/:userId", requireAdmin, async (req, res) => {
+  const ok = await deleteUser(req.params.userId);
+  if (!ok) return res.status(404).json({ error: "user_not_found" });
+  res.json({ ok: true });
+});
+
 /**
  * USER API (cookie auth)
  */
@@ -372,7 +388,9 @@ app.patch("/api/admin/projects/:projectId", requireAdmin, async (req, res) => {
 
   if (typeof req.body?.instructions === "string") patch.instructions = req.body.instructions;
   if (Array.isArray(req.body?.allowed_origins)) patch.allowed_origins = req.body.allowed_origins.map(String);
-  if (typeof req.body?.owner_id === "string") patch.owner_id = req.body.owner_id;
+  if (Object.hasOwn(req.body || {}, "owner_id")) {
+    patch.owner_id = typeof req.body.owner_id === "string" && req.body.owner_id ? req.body.owner_id : null;
+  }
 
   if (typeof req.body?.telegram_code === "string") {
     const code = req.body.telegram_code.trim();

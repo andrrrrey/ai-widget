@@ -19,6 +19,20 @@ export async function listUsers() {
   return await sql.many(`SELECT id, email, role, created_at FROM users ORDER BY created_at DESC`);
 }
 
+export async function updateUserPassword(userId, passwordHash) {
+  return await sql.oneOrNone(
+    "UPDATE users SET password_hash=$2 WHERE id=$1 RETURNING id, email, role, created_at",
+    [userId, passwordHash]
+  );
+}
+
+export async function deleteUser(userId) {
+  const existing = await sql.oneOrNone("SELECT id FROM users WHERE id=$1", [userId]);
+  if (!existing) return false;
+  await sql.exec("DELETE FROM users WHERE id=$1", [userId]);
+  return true;
+}
+
 export async function createProject({
   name,
   assistantId,

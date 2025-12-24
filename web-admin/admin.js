@@ -7,6 +7,7 @@ let pollTimer = null;
 let projectsCache = [];
 let usersCache = [];
 let currentSession = null;
+let currentProjectOwnerId = null;
 
 const isAdmin = () => currentSession?.role === "admin";
 
@@ -74,8 +75,8 @@ async function login(){
   $("#loginBox").style.display = "none";
   $("#app").style.display = "flex";
   showPage("chats");
-  await refreshProjects(true);
   if(isAdmin()) await refreshUsers();
+  await refreshProjects(true);
 }
 
 async function logout(){
@@ -129,6 +130,7 @@ async function loadProject(projectId){
   const j = await api(`${projectApiBase()}/${projectId}`);
   const p = j.project;
   selectedProjectId = p.id;
+  currentProjectOwnerId = p.owner_id || null;
 
   const projectName = projectsCache.find(x => x.id === p.id)?.name || "Проект";
   $("#projectBadge").textContent = projectName;
@@ -143,6 +145,7 @@ async function loadProject(projectId){
   $("#instructions").value = instructions;
   $("#origins").value = (p.allowed_origins || []).join("\n");
 
+  if(isAdmin()) renderOwnerSelect(currentProjectOwnerId);
   renderTelegramSection(p);
 }
 
@@ -157,15 +160,19 @@ async function saveProject(){
     .split("\n")
     .map(s => s.trim())
     .filter(Boolean);
+  const owner_id = isAdmin()
+    ? ($("#projectOwner")?.value?.trim() || null)
+    : undefined;
 
   const url = `${projectApiBase()}/${selectedProjectId}`;
 
   await api(url, {
     method:"PATCH",
     headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({ openai_api_key, assistant_id, instructions, allowed_origins })
+    body: JSON.stringify({ openai_api_key, assistant_id, instructions, allowed_origins, owner_id })
   });
 
+  if(isAdmin()) currentProjectOwnerId = owner_id;
   $("#saveOk").textContent = "Сохранено";
   setTimeout(()=> $("#saveOk").textContent = "", 1400);
 }
@@ -190,6 +197,23 @@ function renderTelegramSection(project){
     statusEl.className = "pill muted";
     infoEl.textContent = "Получите код в Telegram-боте AI Widget и вставьте его здесь.";
   }
+}
+
+function renderOwnerSelect(ownerId){
+  const select = $("#projectOwner");
+  if(!select) return;
+  select.innerHTML = "";
+  const optNone = document.createElement("option");
+  optNone.value = "";
+  optNone.textContent = "Без владельца";
+  select.appendChild(optNone);
+  for(const u of usersCache){
+    const opt = document.createElement("option");
+    opt.value = u.id;
+    opt.textContent = u.email;
+    select.appendChild(opt);
+  }
+  select.value = ownerId || "";
 }
 
 async function linkTelegram(){
@@ -390,6 +414,7 @@ async function refreshUsers(){
   const j = await api("/api/admin/users");
   usersCache = j.items || [];
   renderUsers(usersCache);
+  if(selectedProjectId) renderOwnerSelect(currentProjectOwnerId);
 }
 
 function renderUsers(items){
@@ -404,13 +429,52 @@ function renderUsers(items){
     const div = document.createElement("div");
     div.className = "userRow";
     div.innerHTML = `
-      <div>
+      <div class="userInfo">
         <div class="mono">${escapeHtml(u.email)}</div>
         <div class="muted">Создан: ${new Date(u.created_at).toLocaleString()}</div>
       </div>
-      <span class="pill">${escapeHtml(u.role)}</span>
+      <div class="userActions">
+        <span class="pill">${escapeHtml(u.role)}</span>
+        <button class="ghost btnUserPassword" type="button">Сменить пароль</button>
+        <button class="ghost danger btnUserDelete" type="button">Удалить</button>
+      </div>
     `;
+    div.querySelector(".btnUserPassword").addEventListener("click", ()=> changeUserPassword(u));
+    div.querySelector(".btnUserDelete").addEventListener("click", ()=> removeUser(u));
     box.appendChild(div);
+  }
+}
+
+async function changeUserPassword(user){
+  const password = prompt(`Новый пароль для ${user.email}`)?.trim();
+  if(!password) return;
+  $("#userErr").textContent = "";
+  $("#userOk").textContent = "";
+  try{
+    await api(`/api/admin/users/${user.id}`, {
+      method:"PATCH",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ password })
+    });
+    $("#userOk").textContent = "Пароль обновлён";
+    setTimeout(()=> $("#userOk").textContent = "", 2000);
+  } catch(err){
+    $("#userErr").textContent = "Не удалось обновить пароль";
+  }
+}
+
+async function removeUser(user){
+  if(!confirm(`Удалить пользователя ${user.email}?`)) return;
+  $("#userErr").textContent = "";
+  $("#userOk").textContent = "";
+  try{
+    await api(`/api/admin/users/${user.id}`, { method:"DELETE" });
+    $("#userOk").textContent = "Пользователь удалён";
+    await refreshUsers();
+    if(selectedProjectId) await loadProject(selectedProjectId);
+    setTimeout(()=> $("#userOk").textContent = "", 2000);
+  } catch(err){
+    $("#userErr").textContent = "Не удалось удалить пользователя";
   }
 }
 
