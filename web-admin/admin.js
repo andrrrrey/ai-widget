@@ -293,6 +293,11 @@ function renderChats(items){
     box.innerHTML = `<div class="muted">Пока нет чатов</div>`;
     return;
   }
+  const formatStatus = (status) => {
+    if(status === "closed") return "Закрытый";
+    if(status === "open") return "Открытый";
+    return status || "-";
+  };
   for(const c of items){
     const title = c.display_name || c.id;
     const div = document.createElement("div");
@@ -303,7 +308,7 @@ function renderChats(items){
           <div style="font-weight:700">${escapeHtml(title)}</div>
           <div class="mono muted" style="font-size:12px">${escapeHtml(c.id)}</div>
         </div>
-        <span class="pill">${escapeHtml(c.mode)} • ${escapeHtml(c.status)}</span>
+        <span class="pill">${escapeHtml(c.mode)} • ${escapeHtml(formatStatus(c.status))}</span>
       </div>
       <div class="muted">updated: ${new Date(c.updated_at).toLocaleString()}</div>
       <div class="muted">visitor: ${escapeHtml(c.visitor_id || "-")}</div>
@@ -378,6 +383,14 @@ async function release(){
   await api(`${chatApiBase()}/${selectedChatId}/release`, { method:"POST" });
   await refreshChats();
   await refreshChatView();
+}
+
+async function deleteChat(){
+  if(!selectedChatId || !isAdmin()) return;
+  if(!confirm("Удалить этот чат? Сообщения будут удалены без возможности восстановления.")) return;
+  await api(`/api/admin/chats/${selectedChatId}`, { method:"DELETE" });
+  resetChatView();
+  await refreshChats();
 }
 
 async function sendHuman(e){
@@ -528,6 +541,7 @@ $("#projectSelect").addEventListener("change", async (e)=>{
   await refreshChats();
 });
 $("#btnRelease").addEventListener("click", ()=> release().catch(()=>{}));
+$("#btnDeleteChat").addEventListener("click", ()=> deleteChat().catch(()=>{}));
 $("#humanForm").addEventListener("submit", sendHuman);
 $("#btnOpenSettings").addEventListener("click", ()=> showPage("settings"));
 $("#btnBackToChats").addEventListener("click", ()=> showPage("chats"));

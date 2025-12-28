@@ -168,6 +168,23 @@ export async function listChats({ projectId, status = null, mode = null }) {
   return await sql.many(q, params);
 }
 
+export async function closeInactiveChats({ projectId, inactivityMinutes = 30 }) {
+  if (!projectId) return 0;
+  const row = await sql.one(
+    `WITH updated AS (
+      UPDATE chats
+      SET status='closed', updated_at=NOW()
+      WHERE project_id=$1
+        AND status='open'
+        AND COALESCE(last_seen_at, created_at) < NOW() - ($2 || ' minutes')::interval
+      RETURNING 1
+    )
+    SELECT COUNT(*)::int AS count FROM updated`,
+    [projectId, String(inactivityMinutes)]
+  );
+  return row?.count ?? 0;
+}
+
 export async function listMessages(chatId) {
   return await sql.many("SELECT * FROM messages WHERE chat_id=$1 ORDER BY created_at ASC", [chatId]);
 }
@@ -195,5 +212,12 @@ export async function setChatMode(chatId, mode) {
 }
 
 export async function touchChat(chatId) {
-  await sql.exec("UPDATE chats SET updated_at=NOW(), last_seen_at=NOW() WHERE id=$1", [chatId]);
+  await sql.exec("UPDATE chats SET status='open', updated_at=NOW(), last_seen_at=NOW() WHERE id=$1", [chatId]);
+}
+
+export async function deleteChat(chatId) {
+  const existing = await getChatById(chatId);
+  if (!existing) return false;
+  await sql.exec("DELETE FROM chats WHERE id=$1", [chatId]);
+  return true;
 }

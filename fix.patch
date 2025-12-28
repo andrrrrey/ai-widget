@@ -1,28 +1,8 @@
-diff --git a/server/sql/004_project_telegram_chats.sql b/server/sql/004_project_telegram_chats.sql
-new file mode 100644
-index 0000000000000000000000000000000000000000..8b7130114b3dade6cb77b2b0f34c51e54d859ce3
---- /dev/null
-+++ b/server/sql/004_project_telegram_chats.sql
-@@ -0,0 +1,14 @@
-+-- 004_project_telegram_chats.sql — multiple telegram chats per project
-+
-+CREATE TABLE IF NOT EXISTS project_telegram_chats (
-+  project_id text NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-+  chat_id text NOT NULL,
-+  chat_type text NULL,
-+  created_at timestamptz NOT NULL DEFAULT NOW(),
-+  PRIMARY KEY (project_id, chat_id)
-+);
-+
-+CREATE INDEX IF NOT EXISTS project_telegram_chats_chat_idx ON project_telegram_chats(chat_id);
-+
-+ALTER TABLE telegram_link_tokens
-+  ADD COLUMN IF NOT EXISTS chat_type text NULL;
 diff --git a/server/src/index.js b/server/src/index.js
-index 4f4364fd7a8c768ea292bd330bc13523792bebe6..27734f8fc6b91a8103b6833f2fa9d37d2f9fe90d 100644
+index 27734f8fc6b91a8103b6833f2fa9d37d2f9fe90d..8a4023326870148ecb293d274fb8ec418abea129 100644
 --- a/server/src/index.js
 +++ b/server/src/index.js
-@@ -1,44 +1,46 @@
+@@ -1,54 +1,56 @@
  import express from "express";
  import cookieParser from "cookie-parser";
  import path from "path";
@@ -42,16 +22,18 @@ index 4f4364fd7a8c768ea292bd330bc13523792bebe6..27734f8fc6b91a8103b6833f2fa9d37d
    getProject,
    updateProject,
    deleteProject,
-+  addProjectTelegramChat,
-+  deleteProjectTelegramChats,
+   addProjectTelegramChat,
+   deleteProjectTelegramChats,
    createChat,
    getChatById,
    listChats,
    listMessages,
++  closeInactiveChats,
    addMessage,
    setChatMode,
    touchChat,
    countUserMessages,
++  deleteChat,
  } from "./lib/store.js";
  import { widgetCors } from "./lib/widgetCors.js";
  import {
@@ -69,127 +51,15 @@ index 4f4364fd7a8c768ea292bd330bc13523792bebe6..27734f8fc6b91a8103b6833f2fa9d37d
  } from "./lib/telegram.js";
  
  dotenv.config({ path: "/var/www/ai-widget/server/.env" });
-@@ -303,56 +305,66 @@ app.post("/api/user/projects", requireUser, async (req, res) => {
- app.get("/api/user/projects/:projectId", requireUser, async (req, res) => {
-   const project = await getProject(req.params.projectId);
-   if (!project || project.owner_id !== req.auth.userId)
-     return res.status(404).json({ error: "project_not_found" });
-   res.json({ project });
- });
  
- app.patch("/api/user/projects/:projectId", requireUser, async (req, res) => {
-   const project = await getProject(req.params.projectId);
-   if (!project || project.owner_id !== req.auth.userId)
-     return res.status(404).json({ error: "project_not_found" });
+ const NO_SOURCE_INSTRUCTION =
+   "Не указывай в ответах источник документа, из которого взята информация.";
  
-   const patch = {};
+ const ASSISTANT_ID_PATTERN = /^asst_[a-zA-Z0-9]{12,}$/;
  
-   if (typeof req.body?.name === "string") patch.name = req.body.name;
-   if (typeof req.body?.assistant_id === "string") patch.assistant_id = req.body.assistant_id;
-   if (typeof req.body?.openai_api_key === "string") patch.openai_api_key = req.body.openai_api_key;
-   if (typeof req.body?.instructions === "string") patch.instructions = req.body.instructions;
-   if (Array.isArray(req.body?.allowed_origins)) patch.allowed_origins = req.body.allowed_origins.map(String);
+ const isLikelyAssistantId = (value) => ASSISTANT_ID_PATTERN.test(String(value || ""));
  
-   if (typeof req.body?.telegram_code === "string") {
-     const code = req.body.telegram_code.trim();
-     if (code) {
-       const token = await consumeTelegramSecret(code);
-       if (!token) return res.status(400).json({ error: "invalid_telegram_code" });
--      patch.telegram_chat_id = token.chat_id;
--      patch.telegram_connected_at = new Date();
-+      await addProjectTelegramChat({
-+        projectId: project.id,
-+        chatId: token.chat_id,
-+        chatType: token.chat_type,
-+      });
-+      if (!project.telegram_chat_id) {
-+        patch.telegram_chat_id = token.chat_id;
-+      }
-+      if (!project.telegram_connected_at) {
-+        patch.telegram_connected_at = new Date();
-+      }
-     }
-   }
- 
-   if (req.body?.unlink_telegram === true) {
-+    await deleteProjectTelegramChats(project.id);
-     patch.telegram_chat_id = null;
-     patch.telegram_connected_at = null;
-   }
- 
-   const updated = await updateProject(req.params.projectId, patch);
-   res.json({ project: updated });
- });
- 
- app.delete("/api/user/projects/:projectId", requireUser, async (req, res) => {
-   const project = await getProject(req.params.projectId);
-   if (!project || project.owner_id !== req.auth.userId)
-     return res.status(404).json({ error: "project_not_found" });
-   await deleteProject(req.params.projectId);
-   res.json({ ok: true });
- });
- 
- app.get("/api/admin/projects/:projectId", requireAdmin, async (req, res) => {
-   const project = await getProject(req.params.projectId);
-   if (!project) return res.status(404).json({ error: "project_not_found" });
-   res.json({ project });
- });
- 
- app.get(
-   "/api/admin/projects/:projectId/assistant-instructions",
-   requireAdmin,
-@@ -400,56 +412,66 @@ app.get(
- );
- 
- app.patch("/api/admin/projects/:projectId", requireAdmin, async (req, res) => {
-   const current = await getProject(req.params.projectId);
-   if (!current) return res.status(404).json({ error: "project_not_found" });
-   
-   const patch = {};
- 
-   if (typeof req.body?.name === "string") patch.name = req.body.name;
-   if (typeof req.body?.assistant_id === "string") patch.assistant_id = req.body.assistant_id;
- 
-   // ✅ ВОТ ЭТА СТРОКА РЕШАЕТ ПРОБЛЕМУ: позволяет сохранять API key при PATCH
-   if (typeof req.body?.openai_api_key === "string") patch.openai_api_key = req.body.openai_api_key;
- 
-   if (typeof req.body?.instructions === "string") patch.instructions = req.body.instructions;
-   if (Array.isArray(req.body?.allowed_origins)) patch.allowed_origins = req.body.allowed_origins.map(String);
-   if (Object.hasOwn(req.body || {}, "owner_id")) {
-     patch.owner_id = typeof req.body.owner_id === "string" && req.body.owner_id ? req.body.owner_id : null;
-   }
- 
-   if (typeof req.body?.telegram_code === "string") {
-     const code = req.body.telegram_code.trim();
-     if (code) {
-       const token = await consumeTelegramSecret(code);
-       if (!token) return res.status(400).json({ error: "invalid_telegram_code" });
--      patch.telegram_chat_id = token.chat_id;
--      patch.telegram_connected_at = new Date();
-+      await addProjectTelegramChat({
-+        projectId: current.id,
-+        chatId: token.chat_id,
-+        chatType: token.chat_type,
-+      });
-+      if (!current.telegram_chat_id) {
-+        patch.telegram_chat_id = token.chat_id;
-+      }
-+      if (!current.telegram_connected_at) {
-+        patch.telegram_connected_at = new Date();
-+      }
-     }
-   }
- 
-   if (req.body?.unlink_telegram === true) {
-+    await deleteProjectTelegramChats(current.id);
-     patch.telegram_chat_id = null;
-     patch.telegram_connected_at = null;
-   }
- 
-   const project = await updateProject(req.params.projectId, patch);
-   if (!project) return res.status(404).json({ error: "project_not_found" });
-   
-   const assistantId = patch.assistant_id ?? current.assistant_id;
+@@ -461,66 +463,68 @@ app.patch("/api/admin/projects/:projectId", requireAdmin, async (req, res) => {
    const apiKey = patch.openai_api_key ?? current.openai_api_key;
    const instructions = patch.instructions ?? current.instructions;
  
@@ -207,72 +77,102 @@ index 4f4364fd7a8c768ea292bd330bc13523792bebe6..27734f8fc6b91a8103b6833f2fa9d37d
          .status(500)
          .json({ error: "failed_to_update_assistant", message: err?.message || "" });
      }
+   }
+   
+   res.json({ project });
+ });
+ 
+ // Chats and messages (scoped by project)
+ app.get("/api/admin/projects/:projectId/chats", requireAdmin, async (req, res) => {
+   const { projectId } = req.params;
++  await closeInactiveChats({ projectId });
+   const status = req.query.status ? String(req.query.status) : null;
+   const mode = req.query.mode ? String(req.query.mode) : null;
+   const items = await listChats({ projectId, status, mode });
+   const withNames = items.map((chat) => ({
+     ...chat,
+     display_name: getChatDisplayName(chat.id),
+   }));
+   res.json({ items: withNames });
+ });
+ 
+ app.get("/api/user/projects/:projectId/chats", requireUser, async (req, res) => {
+   const { projectId } = req.params;
+   const project = await getProject(projectId);
+   if (!project || project.owner_id !== req.auth.userId)
+     return res.status(404).json({ error: "project_not_found" });
+ 
++  await closeInactiveChats({ projectId });
+   const status = req.query.status ? String(req.query.status) : null;
+   const mode = req.query.mode ? String(req.query.mode) : null;
+   const items = await listChats({ projectId, status, mode });
+   const withNames = items.map((chat) => ({
+     ...chat,
+     display_name: getChatDisplayName(chat.id),
+   }));
+   res.json({ items: withNames });
+ });
+ 
+ app.get("/api/admin/chats/:chatId/messages", requireAdmin, async (req, res) => {
+   const items = await listMessages(req.params.chatId);
+   res.json({ items });
+ });
+ 
+ app.get("/api/user/chats/:chatId/messages", requireUser, async (req, res) => {
+   const chat = await getChatById(req.params.chatId);
+   if (!chat) return res.status(404).json({ error: "chat_not_found" });
+ 
+   const project = await getProject(chat.project_id);
+   if (!project || project.owner_id !== req.auth.userId)
+     return res.status(404).json({ error: "chat_not_found" });
+ 
+   const items = await listMessages(chat.id);
+   res.json({ items });
+@@ -583,33 +587,39 @@ app.post("/api/admin/chats/:chatId/release", requireAdmin, async (req, res) => {
+   const chat = await setChatMode(req.params.chatId, "assistant");
+   res.json({ chat });
+ });
+ 
+ app.post("/api/admin/chats/:chatId/message", requireAdmin, async (req, res) => {
+   const text = String(req.body?.text || "").trim();
+   if (!text) return res.status(400).json({ error: "empty" });
+ 
+   const chat = await getChatById(req.params.chatId);
+   if (!chat) return res.status(404).json({ error: "chat_not_found" });
+ 
+   await addMessage({ chatId: chat.id, role: "human", content: text });
+ 
+   try {
+     const project = await getProject(chat.project_id);
+     if (project?.openai_api_key) {
+       await syncOperatorToThread(project.openai_api_key, chat.thread_id, text);
+     }
+   } catch (e) {
+     console.warn("syncOperatorToThread error:", e?.message || e);
+   }
+ 
+   res.json({ ok: true });
+ });
+ 
++app.delete("/api/admin/chats/:chatId", requireAdmin, async (req, res) => {
++  const ok = await deleteChat(req.params.chatId);
++  if (!ok) return res.status(404).json({ error: "chat_not_found" });
++  res.json({ ok: true });
++});
++
+ app.use((req, res) => res.status(404).json({ error: "not_found" }));
+ 
+ const port = Number(process.env.PORT || 3000);
+ app.listen(port, async () => {
+   await ensureSchema();
+   await pool.query("SELECT 1");
+   console.log(`[ai-widget] listening on :${port}`);
+ });
 diff --git a/server/src/lib/store.js b/server/src/lib/store.js
-index 953b1af9383cc2f93279165125e06f1b408f365d..d170defb2beb465eb880fd7ff733ad233583c320 100644
+index d170defb2beb465eb880fd7ff733ad233583c320..16e471e13ceeb3b0b2cf4a31039bb43fa7d23a65 100644
 --- a/server/src/lib/store.js
 +++ b/server/src/lib/store.js
-@@ -85,50 +85,76 @@ export async function updateProject(projectId, patch) {
-   const telegramChatId = Object.hasOwn(patch, "telegram_chat_id")
-     ? patch.telegram_chat_id
-     : p.telegram_chat_id;
-   const telegramConnectedAt = Object.hasOwn(patch, "telegram_connected_at")
-     ? patch.telegram_connected_at
-     : p.telegram_connected_at;
- 
-   return await sql.one(
-     `UPDATE projects
-      SET name=$2, assistant_id=$3, openai_api_key=$4, instructions=$5, allowed_origins=$6, owner_id=$7, telegram_chat_id=$8, telegram_connected_at=$9, updated_at=NOW()
-      WHERE id=$1 RETURNING *`,
-     [
-       projectId,
-       name,
-       assistantId,
-       openaiApiKey,
-       instructions,
-       allowedOrigins,
-       ownerId,
-       telegramChatId,
-       telegramConnectedAt,
-     ]
-   );
- }
- 
-+export async function addProjectTelegramChat({ projectId, chatId, chatType = null }) {
-+  if (!projectId || !chatId) return false;
-+  await sql.exec(
-+    `INSERT INTO project_telegram_chats (project_id, chat_id, chat_type)
-+     VALUES ($1,$2,$3)
-+     ON CONFLICT (project_id, chat_id)
-+     DO UPDATE SET chat_type=EXCLUDED.chat_type`,
-+    [projectId, String(chatId), chatType || null]
-+  );
-+  return true;
-+}
-+
-+export async function listProjectTelegramChats(projectId) {
-+  if (!projectId) return [];
-+  return await sql.many(
-+    "SELECT chat_id, chat_type, created_at FROM project_telegram_chats WHERE project_id=$1 ORDER BY created_at ASC",
-+    [projectId]
-+  );
-+}
-+
-+export async function deleteProjectTelegramChats(projectId) {
-+  if (!projectId) return false;
-+  await sql.exec("DELETE FROM project_telegram_chats WHERE project_id=$1", [projectId]);
-+  return true;
-+}
-+
- export async function deleteProject(projectId) {
-   const existing = await getProject(projectId);
-   if (!existing) return false;
-   await sql.exec("DELETE FROM projects WHERE id=$1", [projectId]);
-   return true;
- }
- 
- export async function createChat({ projectId, visitorId, openaiApiKey }) {
-   const threadId = await ensureThread(openaiApiKey);
-   const id = uuidv4();
+@@ -146,54 +146,78 @@ export async function createChat({ projectId, visitorId, openaiApiKey }) {
  
    const row = await sql.one(
      `INSERT INTO chats (id, project_id, thread_id, mode, status, visitor_id)
@@ -288,250 +188,291 @@ index 953b1af9383cc2f93279165125e06f1b408f365d..d170defb2beb465eb880fd7ff733ad23
  
  export async function listChats({ projectId, status = null, mode = null }) {
    const where = ["project_id=$1"];
-diff --git a/server/src/lib/telegram.js b/server/src/lib/telegram.js
-index a94aa2b0791301dcc85b780f0519d8fedd41df96..e8dfeecfbb50377fbc3e3b7c74caf8e34f7b2a41 100644
---- a/server/src/lib/telegram.js
-+++ b/server/src/lib/telegram.js
-@@ -1,149 +1,170 @@
- import dotenv from "dotenv";
- dotenv.config({ path: "/var/www/ai-widget/server/.env" });
+   const params = [projectId];
+   let i = 2;
  
- import crypto from "crypto";
+   if (status) { where.push(`status=$${i++}`); params.push(status); }
+   if (mode) { where.push(`mode=$${i++}`); params.push(mode); }
  
- import { sql } from "./db.js";
-+import { getChatDisplayName } from "./chatNames.js";
-+import { listProjectTelegramChats } from "./store.js";
- 
- const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
- 
- function randomSecret() {
-   return crypto.randomBytes(5).toString("hex");
+   const q = `SELECT * FROM chats WHERE ${where.join(" AND ")} ORDER BY updated_at DESC LIMIT 200`;
+   return await sql.many(q, params);
  }
  
- export function isTelegramConfigured() {
-   return Boolean(TELEGRAM_TOKEN);
++export async function closeInactiveChats({ projectId, inactivityMinutes = 30 }) {
++  if (!projectId) return 0;
++  const row = await sql.one(
++    `WITH updated AS (
++      UPDATE chats
++      SET status='closed', updated_at=NOW()
++      WHERE project_id=$1
++        AND status='open'
++        AND COALESCE(last_seen_at, created_at) < NOW() - ($2 || ' minutes')::interval
++      RETURNING 1
++    )
++    SELECT COUNT(*)::int AS count FROM updated`,
++    [projectId, String(inactivityMinutes)]
++  );
++  return row?.count ?? 0;
++}
++
+ export async function listMessages(chatId) {
+   return await sql.many("SELECT * FROM messages WHERE chat_id=$1 ORDER BY created_at ASC", [chatId]);
  }
  
--export async function issueTelegramSecret({ chatId, username = null }) {
-+export async function issueTelegramSecret({ chatId, username = null, chatType = null }) {
-   if (!chatId) throw new Error("chat_id_required");
- 
-   let attempts = 0;
-   while (attempts < 5) {
-     const secret = randomSecret();
-     try {
-       await sql.exec(
--        `INSERT INTO telegram_link_tokens (secret, chat_id, username)
--         VALUES ($1,$2,$3)`,
--        [secret, String(chatId), username || null]
-+        `INSERT INTO telegram_link_tokens (secret, chat_id, username, chat_type)
-+         VALUES ($1,$2,$3,$4)`,
-+        [secret, String(chatId), username || null, chatType || null]
-       );
-       return secret;
-     } catch (err) {
-       // retry on conflict
-       attempts += 1;
-       if (attempts >= 5) throw err;
-     }
-   }
-   throw new Error("failed_to_generate_secret");
- }
- 
- export async function consumeTelegramSecret(secret) {
-   if (!secret) return null;
-   return await sql.oneOrNone(
-     `UPDATE telegram_link_tokens
-        SET used_at=NOW()
-      WHERE secret=$1 AND used_at IS NULL
--     RETURNING chat_id, username, created_at`,
-+     RETURNING chat_id, username, chat_type, created_at`,
-     [secret]
+ export async function addMessage({ chatId, role, content }) {
+   return await sql.one(
+     `INSERT INTO messages (id, chat_id, role, content)
+      VALUES ($1,$2,$3,$4) RETURNING *`,
+     [uuidv4(), chatId, role, content]
    );
  }
  
- export async function sendTelegramMessage(chatId, text) {
-   if (!TELEGRAM_TOKEN || !chatId || !text) return false;
- 
-   const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
-   const body = { chat_id: chatId, text };
-   const r = await fetch(url, {
-     method: "POST",
-     headers: { "Content-Type": "application/json" },
-     body: JSON.stringify(body),
-   });
- 
-   if (!r.ok) {
-     const payload = await r.text();
-     throw new Error(`telegram_error_${r.status}: ${payload}`);
-   }
-   return true;
+ export async function countUserMessages(chatId) {
+   const row = await sql.one(
+     "SELECT COUNT(*)::int AS count FROM messages WHERE chat_id=$1 AND role='user'",
+     [chatId]
+   );
+   return row?.count ?? 0;
  }
  
- function formatProjectTitle(project) {
-   return project?.name ? `"${project.name}"` : "вашем сайте";
+ export async function setChatMode(chatId, mode) {
+   const row = await sql.oneOrNone("UPDATE chats SET mode=$2, updated_at=NOW() WHERE id=$1 RETURNING *", [chatId, mode]);
+   if (!row) throw new Error("chat_not_found");
+   return row;
  }
  
- function formatChatId(chat) {
--  return chat?.id || "неизвестен";
-+  if (!chat?.id) return "неизвестен";
-+  return getChatDisplayName(chat.id);
+ export async function touchChat(chatId) {
+-  await sql.exec("UPDATE chats SET updated_at=NOW(), last_seen_at=NOW() WHERE id=$1", [chatId]);
++  await sql.exec("UPDATE chats SET status='open', updated_at=NOW(), last_seen_at=NOW() WHERE id=$1", [chatId]);
 +}
 +
-+async function listProjectTelegramChatIds(project) {
-+  if (!project?.id) return [];
-+  const rows = await listProjectTelegramChats(project.id);
-+  const ids = rows.map((row) => row.chat_id).filter(Boolean);
-+  if (project.telegram_chat_id && !ids.includes(project.telegram_chat_id)) {
-+    ids.push(project.telegram_chat_id);
-+  }
-+  return ids;
++export async function deleteChat(chatId) {
++  const existing = await getChatById(chatId);
++  if (!existing) return false;
++  await sql.exec("DELETE FROM chats WHERE id=$1", [chatId]);
++  return true;
+ }
+diff --git a/web-admin/admin.js b/web-admin/admin.js
+index e57f23c91d6c6d8ad466e2d91b85ee67ed750659..0b3492d6ceaccc12d4135c7cff462a733e6448f7 100644
+--- a/web-admin/admin.js
++++ b/web-admin/admin.js
+@@ -271,61 +271,66 @@ async function deleteProject(){
+   await refreshProjects(true);
  }
  
- function normalizeMatch(value) {
-   return String(value || "").trim();
+ async function refreshChats(){
+   if(!selectedProjectId) return;
+   const mode = $("#filterMode").value;
+   const status = $("#filterStatus").value;
+   const qs = new URLSearchParams();
+   if(mode) qs.set("mode", mode);
+   if(status) qs.set("status", status);
+ 
+   const base = isAdmin()
+     ? `/api/admin/projects/${selectedProjectId}/chats`
+     : `/api/user/projects/${selectedProjectId}/chats`;
+   const j = await api(`${base}?${qs.toString()}`);
+   renderChats(j.items || []);
  }
  
- export function extractContactInfo(text) {
-   if (!text) return [];
-   const candidates = [];
-   const emailMatches = text.match(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi) || [];
-   emailMatches.forEach((value) => candidates.push({ type: "email", value }));
- 
-   const phoneMatches = text.match(/(\+?\d[\d\s().-]{6,}\d)/g) || [];
-   phoneMatches.forEach((value) => candidates.push({ type: "phone", value }));
- 
-   const tgHandleMatches = text.match(/(?:^|\s)@([a-zA-Z0-9_]{5,})/g) || [];
-   tgHandleMatches.forEach((value) => candidates.push({ type: "telegram", value }));
- 
-   const tmeMatches = text.match(/t\.me\/([a-zA-Z0-9_]+)/gi) || [];
-   tmeMatches.forEach((value) => candidates.push({ type: "telegram", value }));
- 
-   const waMatches = text.match(/wa\.me\/\d+/gi) || [];
-   waMatches.forEach((value) => candidates.push({ type: "whatsapp", value }));
- 
-   const tgLabelMatches = text.match(/(?:телеграм|telegram|tg)[:\s]+([\w@.+-]{3,})/gi) || [];
-   tgLabelMatches.forEach((value) => candidates.push({ type: "telegram", value }));
- 
-   const waLabelMatches = text.match(/(?:whatsapp|ватсап|ватап)[:\s]+([\w@.+-]{3,})/gi) || [];
-   waLabelMatches.forEach((value) => candidates.push({ type: "whatsapp", value }));
- 
-   const unique = new Map();
-   candidates.forEach((item) => {
-     const cleaned = normalizeMatch(item.value);
-     if (!cleaned) return;
-     const key = `${item.type}:${cleaned.toLowerCase()}`;
-     if (!unique.has(key)) {
-       unique.set(key, { type: item.type, value: cleaned });
-     }
-   });
- 
-   return Array.from(unique.values());
- }
- 
- export async function notifyProjectAboutFirstMessage(project, chat, messageText) {
--  if (!project?.telegram_chat_id || !isTelegramConfigured()) return;
-+  if (!isTelegramConfigured()) return;
-   const title = formatProjectTitle(project);
-+  const chatIds = await listProjectTelegramChatIds(project);
-+  if (chatIds.length === 0) return;
-   const message =
-     `На проекте ${title} получено первое сообщение от пользователя.\n` +
-     `ID чата: ${formatChatId(chat)}.\n` +
-     `Сообщение: ${String(messageText || "").trim().slice(0, 500) || "—"}`;
- 
--  try {
--    await sendTelegramMessage(project.telegram_chat_id, message);
--  } catch (err) {
--    console.warn("telegram notify failed", err?.message || err);
-+  for (const chatId of chatIds) {
-+    try {
-+      await sendTelegramMessage(chatId, message);
-+    } catch (err) {
-+      console.warn("telegram notify failed", err?.message || err);
-+    }
+ function renderChats(items){
+   const box = $("#chatList");
+   box.innerHTML = "";
+   if(!items.length){
+     box.innerHTML = `<div class="muted">Пока нет чатов</div>`;
+     return;
+   }
++  const formatStatus = (status) => {
++    if(status === "closed") return "Закрытый";
++    if(status === "open") return "Открытый";
++    return status || "-";
++  };
+   for(const c of items){
+     const title = c.display_name || c.id;
+     const div = document.createElement("div");
+     div.className = "item";
+     div.innerHTML = `
+       <div class="row" style="justify-content:space-between">
+         <div>
+           <div style="font-weight:700">${escapeHtml(title)}</div>
+           <div class="mono muted" style="font-size:12px">${escapeHtml(c.id)}</div>
+         </div>
+-        <span class="pill">${escapeHtml(c.mode)} • ${escapeHtml(c.status)}</span>
++        <span class="pill">${escapeHtml(c.mode)} • ${escapeHtml(formatStatus(c.status))}</span>
+       </div>
+       <div class="muted">updated: ${new Date(c.updated_at).toLocaleString()}</div>
+       <div class="muted">visitor: ${escapeHtml(c.visitor_id || "-")}</div>
+     `;
+     div.addEventListener("click", ()=> openChat(c));
+     box.appendChild(div);
    }
  }
  
- export async function notifyProjectAboutContacts(project, chat, contacts, messageText) {
--  if (!project?.telegram_chat_id || !isTelegramConfigured()) return;
-+  if (!isTelegramConfigured()) return;
-   if (!Array.isArray(contacts) || contacts.length === 0) return;
-   const title = formatProjectTitle(project);
-+  const chatIds = await listProjectTelegramChatIds(project);
-+  if (chatIds.length === 0) return;
-   const contactsLine = contacts.map((item) => item.value).join(", ");
-   const message =
-     `На проекте ${title} пользователь оставил контакты.\n` +
-     `ID чата: ${formatChatId(chat)}.\n` +
-     `Контакты: ${contactsLine}\n` +
-     `Сообщение: ${String(messageText || "").trim().slice(0, 500) || "—"}`;
+ async function openChat(chat){
+   const chatId = typeof chat === "string" ? chat : chat?.id;
+   if(!chatId) return;
+   selectedChatId = chatId;
+   selectedChatName = typeof chat === "object" ? (chat.display_name || chat.id) : chatId;
+   $("#chatPlaceholder").style.display = "none";
+   $("#chatBox").style.display = "block";
+   $("#chatId").textContent = selectedChatName || chatId;
+   await refreshChatView();
+   startPolling();
+ }
  
--  try {
--    await sendTelegramMessage(project.telegram_chat_id, message);
--  } catch (err) {
--    console.warn("telegram notify failed", err?.message || err);
-+  for (const chatId of chatIds) {
-+    try {
-+      await sendTelegramMessage(chatId, message);
-+    } catch (err) {
-+      console.warn("telegram notify failed", err?.message || err);
-+    }
+ async function refreshChatView(){
+   if(!selectedChatId) return;
+   const messagesUrl = isAdmin()
+     ? `/api/admin/chats/${selectedChatId}/messages`
+@@ -358,50 +363,58 @@ function renderMessages(items){
    }
- }
-diff --git a/server/src/telegram-bot.js b/server/src/telegram-bot.js
-index 3525fce1e750760d2e2c150b803eab2d923f6e6b..a49230a0cb6a4c908520153adddfdfacb8e3b65d 100644
---- a/server/src/telegram-bot.js
-+++ b/server/src/telegram-bot.js
-@@ -2,50 +2,51 @@ import dotenv from "dotenv";
- dotenv.config({ path: "/var/www/ai-widget/server/.env" });
- 
- import TelegramBot from "node-telegram-bot-api";
- 
- import { ensureSchema } from "./lib/db.js";
- import { issueTelegramSecret } from "./lib/telegram.js";
- 
- dotenv.config({ path: "/var/www/ai-widget/server/.env" });
- 
- const token = process.env.TELEGRAM_BOT_TOKEN || "";
- 
- if (!token) {
-   console.error("[telegram-bot] TELEGRAM_BOT_TOKEN is not set in .env");
-   process.exit(1);
+   box.scrollTop = box.scrollHeight;
  }
  
- 
- const bot = new TelegramBot(token, { polling: true });
- 
- await ensureSchema();
- 
- async function sendNewSecret(chat) {
-   const secret = await issueTelegramSecret({
-     chatId: chat.id,
-     username: chat?.username || null,
-+    chatType: chat?.type || null,
-   });
-   const message =
-     `Привет! Это бот уведомлений AI Widget.\n` +
-     `Секретный код для привязки: ${secret}\n\n` +
-     `Скопируйте его и вставьте в настройках проекта в админке, ` +
-     `чтобы получать уведомления о новых чатах.`;
-   await bot.sendMessage(chat.id, message);
+ function startPolling(){
+   if(pollTimer) clearInterval(pollTimer);
+   pollTimer = setInterval(async ()=>{
+     try{ await refreshChatView(); } catch {}
+   }, 1500);
  }
  
- bot.onText(/\/(start|code)/i, async (msg) => {
+ async function takeover(){
+   if(!selectedChatId) return;
+   await api(`${chatApiBase()}/${selectedChatId}/takeover`, { method:"POST" });
+   await refreshChats();
+   await refreshChatView();
+ }
+ 
+ async function release(){
+   if(!selectedChatId) return;
+   await api(`${chatApiBase()}/${selectedChatId}/release`, { method:"POST" });
+   await refreshChats();
+   await refreshChatView();
+ }
+ 
++async function deleteChat(){
++  if(!selectedChatId || !isAdmin()) return;
++  if(!confirm("Удалить этот чат? Сообщения будут удалены без возможности восстановления.")) return;
++  await api(`/api/admin/chats/${selectedChatId}`, { method:"DELETE" });
++  resetChatView();
++  await refreshChats();
++}
++
+ async function sendHuman(e){
+   e.preventDefault();
+   if(!selectedChatId) return;
+   const textEl = $("#humanText");
+   const text = textEl.value.trim();
+   if(!text) return;
+ 
    try {
-     await sendNewSecret(msg.chat);
+     await takeover();
    } catch (err) {
-     console.error("[telegram-bot] failed to issue code", err?.message || err);
-     await bot.sendMessage(msg.chat.id, "Не удалось выдать код. Попробуйте ещё раз позже.");
+     console.warn("takeover failed", err);
+     return;
    }
- });
+   
+   await api(`${chatApiBase()}/${selectedChatId}/message`, {
+     method:"POST",
+     headers:{ "Content-Type":"application/json" },
+     body: JSON.stringify({ text })
+   });
+   textEl.value = "";
+   await refreshChatView();
+ }
  
- bot.onText(/\/help/i, async (msg) => {
-   const help =
-     "Чтобы получать уведомления о новых диалогах:\n" +
-     "1) Отправьте /code, чтобы получить секрет.\n" +
-     "2) Откройте админку проекта и вставьте код в поле 'Telegram код'.";
-   await bot.sendMessage(msg.chat.id, help);
+ function resetChatView(){
+   selectedChatId = null;
+@@ -506,35 +519,36 @@ async function createUserFromForm(e){
+     const code = err?.data?.error || err?.message || "api_error";
+     if(code === "user_exists"){
+       $("#userErr").textContent = "Такой пользователь уже существует";
+     } else if(code === "email_and_password_required"){
+       $("#userErr").textContent = "Нужно указать email и пароль";
+     } else {
+       $("#userErr").textContent = "Не удалось создать пользователя. Попробуйте ещё раз.";
+     }
+   }
+ }
+ 
+ $("#btnLogin").addEventListener("click", ()=> login().catch(e => $("#loginErr").textContent = "Ошибка входа"));
+ $("#btnLogout").addEventListener("click", ()=> logout().catch(()=>{}));
+ $("#btnRefreshProjects").addEventListener("click", ()=> refreshProjects(false).catch(()=>{}));
+ $("#btnCreateProject").addEventListener("click", ()=> createProject().catch(()=>{}));
+ $("#btnSaveProject").addEventListener("click", ()=> saveProject().catch(()=>{}));
+ $("#btnDeleteProject").addEventListener("click", ()=> deleteProject().catch(()=>{}));
+ $("#btnRefreshChats").addEventListener("click", ()=> refreshChats().catch(()=>{}));
+ $("#projectSelect").addEventListener("change", async (e)=>{
+   selectedProjectId = e.target.value;
+   resetChatView();
+   await loadProject(selectedProjectId);
+   await refreshChats();
  });
+ $("#btnRelease").addEventListener("click", ()=> release().catch(()=>{}));
++$("#btnDeleteChat").addEventListener("click", ()=> deleteChat().catch(()=>{}));
+ $("#humanForm").addEventListener("submit", sendHuman);
+ $("#btnOpenSettings").addEventListener("click", ()=> showPage("settings"));
+ $("#btnBackToChats").addEventListener("click", ()=> showPage("chats"));
+ $("#btnOpenUsers").addEventListener("click", ()=>{ showPage("users"); refreshUsers().catch(()=>{}); });
+ $("#btnLinkTelegram").addEventListener("click", ()=> linkTelegram().catch(()=>{}));
+ $("#btnUnlinkTelegram").addEventListener("click", ()=> unlinkTelegram().catch(()=>{}));
+ $("#userForm").addEventListener("submit", (e)=> createUserFromForm(e).catch(()=>{}));
+ $("#btnBackFromUsers").addEventListener("click", ()=> showPage("chats"));
+ 
+ showPage("chats");
+diff --git a/web-admin/index.html b/web-admin/index.html
+index c3c96e70a7acb9a58dc407e10c518ad404f28961..ded12aaea03e42e908bd9aaf7dd95ba857737a2a 100644
+--- a/web-admin/index.html
++++ b/web-admin/index.html
+@@ -69,50 +69,51 @@
+             <div>
+               <p class="eyebrow">Работа с чатами</p>
+               <h2>Чаты из виджета</h2>
+               <p class="muted">Следите за диалогами пользователей и подключайтесь при необходимости.</p>
+             </div>
+           </div>
+ 
+           <div class="chatLayout">
+             <div class="chatListCard">
+               <div class="listHead">
+                 <h3>Чаты проекта</h3>
+                 <span id="projectBadge" class="pill muted"></span>
+               </div>
+               <div id="chatList" class="list"></div>
+             </div>
+ 
+             <div class="chatBox card" id="chatBox" style="display:none">
+               <div class="cardHead">
+                 <div>
+                   <p class="eyebrow">Активный чат</p>
+                   <h3 class="mono" id="chatId"></h3>
+                 </div>
+                 <div class="row">
+                   <span class="pill" id="chatMode"></span>
+                   <button id="btnRelease" class="ghost">Передать ИИ</button>
++                  <button id="btnDeleteChat" class="ghost danger adminOnly">Удалить чат</button>
+                 </div>
+               </div>
+ 
+               <div id="messages" class="msgs"></div>
+ 
+               <form id="humanForm" class="row" style="margin-top:10px">
+                 <input id="humanText" placeholder="Ответить как оператор..." />
+                 <button type="submit">Отправить</button>
+               </form>
+               <div class="muted" style="margin-top:8px">
+                 Human-ответ сохраняется и синхронизируется в OpenAI thread как <b>[OPERATOR] ...</b>
+               </div>
+             </div>
+ 
+             <div class="placeholder" id="chatPlaceholder">
+               <div class="empty">
+                 <p class="eyebrow">Нет выбранного чата</p>
+                 <h3>Выберите чат слева, чтобы открыть переписку</h3>
+                 <p class="muted">Чаты обновляются в реальном времени. Используйте фильтры в панели сверху.</p>
+               </div>
+             </div>
+           </div>
+         </section>
+ 
+         <section id="pageSettings" class="page" style="display:none">

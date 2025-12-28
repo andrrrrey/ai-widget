@@ -23,10 +23,12 @@ import {
   getChatById,
   listChats,
   listMessages,
+  closeInactiveChats,
   addMessage,
   setChatMode,
   touchChat,
   countUserMessages,
+  deleteChat,
 } from "./lib/store.js";
 import { widgetCors } from "./lib/widgetCors.js";
 import {
@@ -483,6 +485,7 @@ app.patch("/api/admin/projects/:projectId", requireAdmin, async (req, res) => {
 // Chats and messages (scoped by project)
 app.get("/api/admin/projects/:projectId/chats", requireAdmin, async (req, res) => {
   const { projectId } = req.params;
+  await closeInactiveChats({ projectId });
   const status = req.query.status ? String(req.query.status) : null;
   const mode = req.query.mode ? String(req.query.mode) : null;
   const items = await listChats({ projectId, status, mode });
@@ -499,6 +502,7 @@ app.get("/api/user/projects/:projectId/chats", requireUser, async (req, res) => 
   if (!project || project.owner_id !== req.auth.userId)
     return res.status(404).json({ error: "project_not_found" });
 
+  await closeInactiveChats({ projectId });
   const status = req.query.status ? String(req.query.status) : null;
   const mode = req.query.mode ? String(req.query.mode) : null;
   const items = await listChats({ projectId, status, mode });
@@ -602,6 +606,12 @@ app.post("/api/admin/chats/:chatId/message", requireAdmin, async (req, res) => {
     console.warn("syncOperatorToThread error:", e?.message || e);
   }
 
+  res.json({ ok: true });
+});
+
+app.delete("/api/admin/chats/:chatId", requireAdmin, async (req, res) => {
+  const ok = await deleteChat(req.params.chatId);
+  if (!ok) return res.status(404).json({ error: "chat_not_found" });
   res.json({ ok: true });
 });
 
