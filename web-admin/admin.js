@@ -8,6 +8,7 @@ let projectsCache = [];
 let usersCache = [];
 let currentSession = null;
 let currentProjectOwnerId = null;
+let currentPage = "chats";
 
 const isAdmin = () => currentSession?.role === "admin";
 
@@ -48,7 +49,8 @@ function escapeHtml(s){
 }
 
 function showPage(page){
-  const pages = { chats: "#pageChats", settings: "#pageSettings", users: "#pageUsers" };
+  currentPage = page;
+  const pages = { chats: "#pageChats", settings: "#pageSettings", users: "#pageUsers", stats: "#pageStats" };
   Object.entries(pages).forEach(([key, sel])=>{
     const el = $(sel);
     if(el) el.style.display = key === page ? "block" : "none";
@@ -109,6 +111,7 @@ async function refreshProjects(autoSelectFirst=false){
 
   if(selectedProjectId) await loadProject(selectedProjectId);
   await refreshChats();
+  if(currentPage === "stats") await refreshStats();
 }
 
 async function createProject(){
@@ -147,6 +150,36 @@ async function loadProject(projectId){
 
   if(isAdmin()) renderOwnerSelect(currentProjectOwnerId);
   renderTelegramSection(p);
+}
+
+async function refreshStats(){
+  if(!selectedProjectId) return;
+  $("#statsErr").textContent = "";
+  const base = isAdmin() ? "/api/admin/projects" : "/api/user/projects";
+  try {
+    const j = await api(`${base}/${selectedProjectId}/stats`);
+    renderStats(j.stats);
+  } catch (err) {
+    $("#statsErr").textContent = "Не удалось загрузить статистику проекта.";
+  }
+}
+
+function renderStats(stats){
+  const totalChats = stats?.totalChats ?? 0;
+  const chatsWithContacts = stats?.chatsWithContacts ?? 0;
+  const avgQuestions = stats?.avgQuestionsPerChat ?? 0;
+  const avgFormatted = Number.isFinite(avgQuestions)
+    ? avgQuestions.toLocaleString("ru-RU", { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+    : "0";
+  $("#statsTotalChats").textContent = totalChats.toLocaleString("ru-RU");
+  $("#statsChatsWithContacts").textContent = chatsWithContacts.toLocaleString("ru-RU");
+  $("#statsAvgQuestions").textContent = avgFormatted;
+
+  const ratio = totalChats ? Math.min(1, chatsWithContacts / totalChats) : 0;
+  $("#statsContactsBar").style.width = `${Math.round(ratio * 100)}%`;
+  $("#statsContactsMeta").textContent = totalChats
+    ? `${Math.round(ratio * 100)}% чатов с контактами`
+    : "Нет данных для расчёта доли";
 }
 
 async function saveProject(){
@@ -539,13 +572,17 @@ $("#projectSelect").addEventListener("change", async (e)=>{
   resetChatView();
   await loadProject(selectedProjectId);
   await refreshChats();
+  if(currentPage === "stats") await refreshStats();
 });
 $("#btnRelease").addEventListener("click", ()=> release().catch(()=>{}));
 $("#btnDeleteChat").addEventListener("click", ()=> deleteChat().catch(()=>{}));
 $("#humanForm").addEventListener("submit", sendHuman);
 $("#btnOpenSettings").addEventListener("click", ()=> showPage("settings"));
 $("#btnBackToChats").addEventListener("click", ()=> showPage("chats"));
+$("#btnOpenStats").addEventListener("click", ()=>{ showPage("stats"); refreshStats().catch(()=>{}); });
 $("#btnOpenUsers").addEventListener("click", ()=>{ showPage("users"); refreshUsers().catch(()=>{}); });
+$("#btnRefreshStats").addEventListener("click", ()=> refreshStats().catch(()=>{}));
+$("#btnBackFromStats").addEventListener("click", ()=> showPage("chats"));
 $("#btnLinkTelegram").addEventListener("click", ()=> linkTelegram().catch(()=>{}));
 $("#btnUnlinkTelegram").addEventListener("click", ()=> unlinkTelegram().catch(()=>{}));
 $("#userForm").addEventListener("submit", (e)=> createUserFromForm(e).catch(()=>{}));

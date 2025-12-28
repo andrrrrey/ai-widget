@@ -29,6 +29,7 @@ import {
   touchChat,
   countUserMessages,
   deleteChat,
+  getProjectStats,
 } from "./lib/store.js";
 import { widgetCors } from "./lib/widgetCors.js";
 import {
@@ -311,6 +312,14 @@ app.get("/api/user/projects/:projectId", requireUser, async (req, res) => {
   res.json({ project });
 });
 
+app.get("/api/user/projects/:projectId/stats", requireUser, async (req, res) => {
+  const project = await getProject(req.params.projectId);
+  if (!project || project.owner_id !== req.auth.userId)
+    return res.status(404).json({ error: "project_not_found" });
+  const stats = await getProjectStats(req.params.projectId);
+  res.json({ stats });
+});
+
 app.patch("/api/user/projects/:projectId", requireUser, async (req, res) => {
   const project = await getProject(req.params.projectId);
   if (!project || project.owner_id !== req.auth.userId)
@@ -365,6 +374,13 @@ app.get("/api/admin/projects/:projectId", requireAdmin, async (req, res) => {
   const project = await getProject(req.params.projectId);
   if (!project) return res.status(404).json({ error: "project_not_found" });
   res.json({ project });
+});
+
+app.get("/api/admin/projects/:projectId/stats", requireAdmin, async (req, res) => {
+  const project = await getProject(req.params.projectId);
+  if (!project) return res.status(404).json({ error: "project_not_found" });
+  const stats = await getProjectStats(req.params.projectId);
+  res.json({ stats });
 });
 
 app.get(

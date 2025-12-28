@@ -1,14 +1,8 @@
 diff --git a/server/src/index.js b/server/src/index.js
-index 27734f8fc6b91a8103b6833f2fa9d37d2f9fe90d..8a4023326870148ecb293d274fb8ec418abea129 100644
+index 8a4023326870148ecb293d274fb8ec418abea129..807aacf122d124fc8f50f636d3d61b8206027928 100644
 --- a/server/src/index.js
 +++ b/server/src/index.js
-@@ -1,54 +1,56 @@
- import express from "express";
- import cookieParser from "cookie-parser";
- import path from "path";
- import { fileURLToPath } from "url";
- import dotenv from "dotenv";
- 
+@@ -7,50 +7,51 @@ import dotenv from "dotenv";
  import { ensureSchema, pool } from "./lib/db.js";
  import { requireAdmin, requireUser, loginHandler, logoutHandler, hashPassword } from "./lib/auth.js";
  import {
@@ -28,12 +22,13 @@ index 27734f8fc6b91a8103b6833f2fa9d37d2f9fe90d..8a4023326870148ecb293d274fb8ec41
    getChatById,
    listChats,
    listMessages,
-+  closeInactiveChats,
+   closeInactiveChats,
    addMessage,
    setChatMode,
    touchChat,
    countUserMessages,
-+  deleteChat,
+   deleteChat,
++  getProjectStats,
  } from "./lib/store.js";
  import { widgetCors } from "./lib/widgetCors.js";
  import {
@@ -59,173 +54,128 @@ index 27734f8fc6b91a8103b6833f2fa9d37d2f9fe90d..8a4023326870148ecb293d274fb8ec41
  
  const isLikelyAssistantId = (value) => ASSISTANT_ID_PATTERN.test(String(value || ""));
  
-@@ -461,66 +463,68 @@ app.patch("/api/admin/projects/:projectId", requireAdmin, async (req, res) => {
-   const apiKey = patch.openai_api_key ?? current.openai_api_key;
-   const instructions = patch.instructions ?? current.instructions;
+@@ -289,50 +290,58 @@ app.post("/api/user/projects", requireUser, async (req, res) => {
+   const openai_api_key = String(req.body?.openai_api_key || "");
+   const instructions = String(req.body?.instructions || "");
+   const allowed_origins = Array.isArray(req.body?.allowed_origins)
+     ? req.body.allowed_origins.map(String)
+     : [];
  
-   if (
-     typeof req.body?.instructions === "string" &&
-     assistantId &&
-     apiKey &&
-     isLikelyAssistantId(assistantId)
-   ) {
-     try {
-       await updateAssistantInstructions({ apiKey, assistantId, instructions });
-     } catch (err) {
-       console.warn("assistant instructions update failed", err?.message || err);
-       return res
-         .status(500)
-         .json({ error: "failed_to_update_assistant", message: err?.message || "" });
-     }
-   }
-   
+   const project = await createProject({
+     name,
+     assistantId: assistant_id,
+     openaiApiKey: openai_api_key,
+     instructions,
+     allowedOrigins: allowed_origins,
+     ownerId: req.auth.userId,
+   });
+ 
    res.json({ project });
  });
  
- // Chats and messages (scoped by project)
- app.get("/api/admin/projects/:projectId/chats", requireAdmin, async (req, res) => {
-   const { projectId } = req.params;
-+  await closeInactiveChats({ projectId });
-   const status = req.query.status ? String(req.query.status) : null;
-   const mode = req.query.mode ? String(req.query.mode) : null;
-   const items = await listChats({ projectId, status, mode });
-   const withNames = items.map((chat) => ({
-     ...chat,
-     display_name: getChatDisplayName(chat.id),
-   }));
-   res.json({ items: withNames });
+ app.get("/api/user/projects/:projectId", requireUser, async (req, res) => {
+   const project = await getProject(req.params.projectId);
+   if (!project || project.owner_id !== req.auth.userId)
+     return res.status(404).json({ error: "project_not_found" });
+   res.json({ project });
  });
  
- app.get("/api/user/projects/:projectId/chats", requireUser, async (req, res) => {
-   const { projectId } = req.params;
-   const project = await getProject(projectId);
++app.get("/api/user/projects/:projectId/stats", requireUser, async (req, res) => {
++  const project = await getProject(req.params.projectId);
++  if (!project || project.owner_id !== req.auth.userId)
++    return res.status(404).json({ error: "project_not_found" });
++  const stats = await getProjectStats(req.params.projectId);
++  res.json({ stats });
++});
++
+ app.patch("/api/user/projects/:projectId", requireUser, async (req, res) => {
+   const project = await getProject(req.params.projectId);
    if (!project || project.owner_id !== req.auth.userId)
      return res.status(404).json({ error: "project_not_found" });
  
-+  await closeInactiveChats({ projectId });
-   const status = req.query.status ? String(req.query.status) : null;
-   const mode = req.query.mode ? String(req.query.mode) : null;
-   const items = await listChats({ projectId, status, mode });
-   const withNames = items.map((chat) => ({
-     ...chat,
-     display_name: getChatDisplayName(chat.id),
-   }));
-   res.json({ items: withNames });
- });
+   const patch = {};
  
- app.get("/api/admin/chats/:chatId/messages", requireAdmin, async (req, res) => {
-   const items = await listMessages(req.params.chatId);
-   res.json({ items });
- });
+   if (typeof req.body?.name === "string") patch.name = req.body.name;
+   if (typeof req.body?.assistant_id === "string") patch.assistant_id = req.body.assistant_id;
+   if (typeof req.body?.openai_api_key === "string") patch.openai_api_key = req.body.openai_api_key;
+   if (typeof req.body?.instructions === "string") patch.instructions = req.body.instructions;
+   if (Array.isArray(req.body?.allowed_origins)) patch.allowed_origins = req.body.allowed_origins.map(String);
  
- app.get("/api/user/chats/:chatId/messages", requireUser, async (req, res) => {
-   const chat = await getChatById(req.params.chatId);
-   if (!chat) return res.status(404).json({ error: "chat_not_found" });
+   if (typeof req.body?.telegram_code === "string") {
+     const code = req.body.telegram_code.trim();
+     if (code) {
+       const token = await consumeTelegramSecret(code);
+       if (!token) return res.status(400).json({ error: "invalid_telegram_code" });
+       await addProjectTelegramChat({
+         projectId: project.id,
+         chatId: token.chat_id,
+         chatType: token.chat_type,
+       });
+       if (!project.telegram_chat_id) {
+         patch.telegram_chat_id = token.chat_id;
+@@ -345,50 +354,57 @@ app.patch("/api/user/projects/:projectId", requireUser, async (req, res) => {
  
-   const project = await getProject(chat.project_id);
-   if (!project || project.owner_id !== req.auth.userId)
-     return res.status(404).json({ error: "chat_not_found" });
- 
-   const items = await listMessages(chat.id);
-   res.json({ items });
-@@ -583,33 +587,39 @@ app.post("/api/admin/chats/:chatId/release", requireAdmin, async (req, res) => {
-   const chat = await setChatMode(req.params.chatId, "assistant");
-   res.json({ chat });
- });
- 
- app.post("/api/admin/chats/:chatId/message", requireAdmin, async (req, res) => {
-   const text = String(req.body?.text || "").trim();
-   if (!text) return res.status(400).json({ error: "empty" });
- 
-   const chat = await getChatById(req.params.chatId);
-   if (!chat) return res.status(404).json({ error: "chat_not_found" });
- 
-   await addMessage({ chatId: chat.id, role: "human", content: text });
- 
-   try {
-     const project = await getProject(chat.project_id);
-     if (project?.openai_api_key) {
-       await syncOperatorToThread(project.openai_api_key, chat.thread_id, text);
-     }
-   } catch (e) {
-     console.warn("syncOperatorToThread error:", e?.message || e);
+   if (req.body?.unlink_telegram === true) {
+     await deleteProjectTelegramChats(project.id);
+     patch.telegram_chat_id = null;
+     patch.telegram_connected_at = null;
    }
  
+   const updated = await updateProject(req.params.projectId, patch);
+   res.json({ project: updated });
+ });
+ 
+ app.delete("/api/user/projects/:projectId", requireUser, async (req, res) => {
+   const project = await getProject(req.params.projectId);
+   if (!project || project.owner_id !== req.auth.userId)
+     return res.status(404).json({ error: "project_not_found" });
+   await deleteProject(req.params.projectId);
    res.json({ ok: true });
  });
  
-+app.delete("/api/admin/chats/:chatId", requireAdmin, async (req, res) => {
-+  const ok = await deleteChat(req.params.chatId);
-+  if (!ok) return res.status(404).json({ error: "chat_not_found" });
-+  res.json({ ok: true });
+ app.get("/api/admin/projects/:projectId", requireAdmin, async (req, res) => {
+   const project = await getProject(req.params.projectId);
+   if (!project) return res.status(404).json({ error: "project_not_found" });
+   res.json({ project });
+ });
+ 
++app.get("/api/admin/projects/:projectId/stats", requireAdmin, async (req, res) => {
++  const project = await getProject(req.params.projectId);
++  if (!project) return res.status(404).json({ error: "project_not_found" });
++  const stats = await getProjectStats(req.params.projectId);
++  res.json({ stats });
 +});
 +
- app.use((req, res) => res.status(404).json({ error: "not_found" }));
+ app.get(
+   "/api/admin/projects/:projectId/assistant-instructions",
+   requireAdmin,
+   async (req, res) => {
+     const project = await getProject(req.params.projectId);
+     if (!project) return res.status(404).json({ error: "project_not_found" });
+     if (!project.assistant_id) return res.status(400).json({ error: "assistant_id_missing" });
+     if (!project.openai_api_key) return res.status(400).json({ error: "openai_api_key_missing" });
  
- const port = Number(process.env.PORT || 3000);
- app.listen(port, async () => {
-   await ensureSchema();
-   await pool.query("SELECT 1");
-   console.log(`[ai-widget] listening on :${port}`);
- });
+     const fallback = project.instructions || "";
+     
+     if (!isLikelyAssistantId(project.assistant_id)) {
+       return res.json({
+         instructions: fallback,
+         source: "project",
+         error: "assistant_id_invalid",
+       });
+     }
+     
+     try {
+       const instructions = await fetchAssistantInstructions({
+         apiKey: project.openai_api_key,
+         assistantId: project.assistant_id,
+       });
+       res.json({ instructions, source: "assistant" });
 diff --git a/server/src/lib/store.js b/server/src/lib/store.js
-index d170defb2beb465eb880fd7ff733ad233583c320..16e471e13ceeb3b0b2cf4a31039bb43fa7d23a65 100644
+index 16e471e13ceeb3b0b2cf4a31039bb43fa7d23a65..d4ab42c1feb34eb19081bcea65f138af525f6635 100644
 --- a/server/src/lib/store.js
 +++ b/server/src/lib/store.js
-@@ -146,54 +146,78 @@ export async function createChat({ projectId, visitorId, openaiApiKey }) {
- 
-   const row = await sql.one(
-     `INSERT INTO chats (id, project_id, thread_id, mode, status, visitor_id)
-      VALUES ($1,$2,$3,'assistant','open',$4) RETURNING *`,
-     [id, projectId, threadId, visitorId || null]
-   );
-   return row;
- }
- 
- export async function getChatById(chatId) {
-   return await sql.oneOrNone("SELECT * FROM chats WHERE id=$1", [chatId]);
- }
- 
- export async function listChats({ projectId, status = null, mode = null }) {
-   const where = ["project_id=$1"];
-   const params = [projectId];
-   let i = 2;
- 
-   if (status) { where.push(`status=$${i++}`); params.push(status); }
-   if (mode) { where.push(`mode=$${i++}`); params.push(mode); }
- 
-   const q = `SELECT * FROM chats WHERE ${where.join(" AND ")} ORDER BY updated_at DESC LIMIT 200`;
-   return await sql.many(q, params);
- }
- 
-+export async function closeInactiveChats({ projectId, inactivityMinutes = 30 }) {
-+  if (!projectId) return 0;
-+  const row = await sql.one(
-+    `WITH updated AS (
-+      UPDATE chats
-+      SET status='closed', updated_at=NOW()
-+      WHERE project_id=$1
-+        AND status='open'
-+        AND COALESCE(last_seen_at, created_at) < NOW() - ($2 || ' minutes')::interval
-+      RETURNING 1
-+    )
-+    SELECT COUNT(*)::int AS count FROM updated`,
-+    [projectId, String(inactivityMinutes)]
-+  );
-+  return row?.count ?? 0;
-+}
-+
- export async function listMessages(chatId) {
-   return await sql.many("SELECT * FROM messages WHERE chat_id=$1 ORDER BY created_at ASC", [chatId]);
- }
- 
- export async function addMessage({ chatId, role, content }) {
-   return await sql.one(
-     `INSERT INTO messages (id, chat_id, role, content)
-      VALUES ($1,$2,$3,$4) RETURNING *`,
-     [uuidv4(), chatId, role, content]
-   );
- }
+@@ -199,25 +199,65 @@ export async function addMessage({ chatId, role, content }) {
  
  export async function countUserMessages(chatId) {
    const row = await sql.one(
@@ -242,148 +192,314 @@ index d170defb2beb465eb880fd7ff733ad233583c320..16e471e13ceeb3b0b2cf4a31039bb43f
  }
  
  export async function touchChat(chatId) {
--  await sql.exec("UPDATE chats SET updated_at=NOW(), last_seen_at=NOW() WHERE id=$1", [chatId]);
-+  await sql.exec("UPDATE chats SET status='open', updated_at=NOW(), last_seen_at=NOW() WHERE id=$1", [chatId]);
-+}
+   await sql.exec("UPDATE chats SET status='open', updated_at=NOW(), last_seen_at=NOW() WHERE id=$1", [chatId]);
+ }
+ 
+ export async function deleteChat(chatId) {
+   const existing = await getChatById(chatId);
+   if (!existing) return false;
+   await sql.exec("DELETE FROM chats WHERE id=$1", [chatId]);
+   return true;
+ }
 +
-+export async function deleteChat(chatId) {
-+  const existing = await getChatById(chatId);
-+  if (!existing) return false;
-+  await sql.exec("DELETE FROM chats WHERE id=$1", [chatId]);
-+  return true;
++export async function getProjectStats(projectId) {
++  const base = await sql.one(
++    `SELECT
++       COUNT(*)::int AS total_chats,
++       COALESCE(SUM(msgs.user_messages), 0)::int AS total_user_messages
++     FROM chats c
++     LEFT JOIN (
++       SELECT chat_id, COUNT(*)::int AS user_messages
++       FROM messages
++       WHERE role='user'
++       GROUP BY chat_id
++     ) AS msgs ON msgs.chat_id = c.id
++     WHERE c.project_id=$1`,
++    [projectId]
++  );
++
++  const contactPattern =
++    "([A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}|\\+?\\d[\\d\\s().-]{6,}\\d|(?:^|\\s)@[a-zA-Z0-9_]{5,}|t\\.me/[a-zA-Z0-9_]+|wa\\.me/\\d+|(?:телеграм|telegram|tg)[:\\s]+[\\w@.+-]{3,}|(?:whatsapp|ватсап|ватап)[:\\s]+[\\w@.+-]{3,})";
++
++  const contactRow = await sql.one(
++    `SELECT COUNT(DISTINCT c.id)::int AS count
++     FROM chats c
++     JOIN messages m ON m.chat_id = c.id
++     WHERE c.project_id=$1
++       AND m.role='user'
++       AND m.content ~* $2`,
++    [projectId, contactPattern]
++  );
++
++  const totalChats = base?.total_chats ?? 0;
++  const totalUserMessages = base?.total_user_messages ?? 0;
++  const avgQuestionsPerChat = totalChats ? totalUserMessages / totalChats : 0;
++
++  return {
++    totalChats,
++    chatsWithContacts: contactRow?.count ?? 0,
++    avgQuestionsPerChat,
++  };
++}
+diff --git a/web-admin/admin.css b/web-admin/admin.css
+index f14aeb1fa5f61864ede2f40087218fdfb630484e..34b4c4f7549a10f831abf47c8b4b04548de9f0d3 100644
+--- a/web-admin/admin.css
++++ b/web-admin/admin.css
+@@ -66,36 +66,45 @@ button.full{width:100%}
+ button.danger{color:var(--bad);border-color:rgba(225,29,72,0.2);background:transparent}
+ button.danger:hover{background:rgba(225,29,72,0.08)}
+ 
+ .list{display:flex;flex-direction:column;gap:10px;max-height:620px;overflow:auto;padding-right:6px}
+ .item{padding:12px;border:1px solid var(--border);border-radius:14px;cursor:pointer;background:white;transition:border-color .2s,transform .1s}
+ .item:hover{border-color:var(--accent);transform:translateY(-1px)}
+ .pill{display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;border:1px solid var(--border);font-size:12px;color:var(--muted);gap:6px}
+ .userRow{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--border);border-radius:14px;padding:12px;background:white;gap:12px;flex-wrap:wrap}
+ .userInfo{display:flex;flex-direction:column;gap:4px;min-width:220px;flex:1}
+ .userActions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+ 
+ .msgs{max-height:620px;overflow:auto;border:1px solid var(--border);border-radius:14px;padding:12px;background:#f8fafc;display:flex;flex-direction:column;gap:10px}
+ .msg{display:flex}
+ .msg.user{justify-content:flex-end}
+ .msg.assistant,.msg.human{justify-content:flex-start}
+ .bubble{max-width:78%;padding:12px 14px;border-radius:14px;white-space:pre-wrap;word-break:break-word;font-size:14px;line-height:1.35;box-shadow:var(--shadow);background:white}
+ .msg.user .bubble{background:#5d5af6;color:white;box-shadow:none;border-bottom-right-radius:6px}
+ .msg.assistant .bubble{background:white;border:1px solid var(--border);border-bottom-left-radius:6px}
+ .msg.human .bubble{background:rgba(93,90,246,0.12);border:1px solid rgba(93,90,246,0.35);border-bottom-left-radius:6px}
+ 
+ .err{color:var(--bad);margin-top:4px;font-size:13px}
+ .ok{color:var(--good);font-size:13px}
+ 
+ .settingsCard{display:flex;flex-direction:column;gap:16px}
+ .formGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
++.statsGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
++.statCard{background:linear-gradient(160deg,rgba(93,90,246,0.1),rgba(255,255,255,0.9));border:1px solid var(--border);border-radius:18px;padding:18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:8px;min-height:160px}
++.statLabel{font-size:13px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.08em}
++.statValue{font-size:32px;font-weight:800;letter-spacing:-0.02em}
++.statHint{font-size:13px;color:var(--muted)}
++.statTrend{display:flex;flex-direction:column;gap:6px;margin-top:auto}
++.statBar{width:100%;height:10px;background:#eef2ff;border-radius:999px;overflow:hidden}
++.statBar span{display:block;height:100%;background:linear-gradient(90deg,#5d5af6,#7c5dfa);border-radius:999px;width:0;transition:width .3s ease}
++.statMeta{font-size:12px;color:var(--muted)}
+ 
+ @media (max-width:1180px){
+   .topbar{flex-direction:column;align-items:stretch}
+   .topbarActions{margin-left:0}
+ }
+ 
+ @media (max-width:980px){
+   .chatLayout{grid-template-columns:1fr}
+   .chatBox{order:2}
+   .chatListCard{order:1}
  }
 diff --git a/web-admin/admin.js b/web-admin/admin.js
-index e57f23c91d6c6d8ad466e2d91b85ee67ed750659..0b3492d6ceaccc12d4135c7cff462a733e6448f7 100644
+index 0b3492d6ceaccc12d4135c7cff462a733e6448f7..514f094d18dd0a2772868198d028d83808ea5c81 100644
 --- a/web-admin/admin.js
 +++ b/web-admin/admin.js
-@@ -271,61 +271,66 @@ async function deleteProject(){
-   await refreshProjects(true);
+@@ -1,76 +1,78 @@
+ const $ = (s) => document.querySelector(s);
+ 
+ let selectedProjectId = null;
+ let selectedChatId = null;
+ let selectedChatName = null;
+ let pollTimer = null;
+ let projectsCache = [];
+ let usersCache = [];
+ let currentSession = null;
+ let currentProjectOwnerId = null;
++let currentPage = "chats";
+ 
+ const isAdmin = () => currentSession?.role === "admin";
+ 
+ function projectApiBase(){
+   return isAdmin() ? "/api/admin/projects" : "/api/user/projects";
  }
  
- async function refreshChats(){
-   if(!selectedProjectId) return;
-   const mode = $("#filterMode").value;
-   const status = $("#filterStatus").value;
-   const qs = new URLSearchParams();
-   if(mode) qs.set("mode", mode);
-   if(status) qs.set("status", status);
- 
-   const base = isAdmin()
-     ? `/api/admin/projects/${selectedProjectId}/chats`
-     : `/api/user/projects/${selectedProjectId}/chats`;
-   const j = await api(`${base}?${qs.toString()}`);
-   renderChats(j.items || []);
+ function chatApiBase(){
+   return isAdmin() ? "/api/admin/chats" : "/api/user/chats";
  }
  
- function renderChats(items){
-   const box = $("#chatList");
-   box.innerHTML = "";
-   if(!items.length){
-     box.innerHTML = `<div class="muted">Пока нет чатов</div>`;
-     return;
-   }
-+  const formatStatus = (status) => {
-+    if(status === "closed") return "Закрытый";
-+    if(status === "open") return "Открытый";
-+    return status || "-";
-+  };
-   for(const c of items){
-     const title = c.display_name || c.id;
-     const div = document.createElement("div");
-     div.className = "item";
-     div.innerHTML = `
-       <div class="row" style="justify-content:space-between">
-         <div>
-           <div style="font-weight:700">${escapeHtml(title)}</div>
-           <div class="mono muted" style="font-size:12px">${escapeHtml(c.id)}</div>
-         </div>
--        <span class="pill">${escapeHtml(c.mode)} • ${escapeHtml(c.status)}</span>
-+        <span class="pill">${escapeHtml(c.mode)} • ${escapeHtml(formatStatus(c.status))}</span>
-       </div>
-       <div class="muted">updated: ${new Date(c.updated_at).toLocaleString()}</div>
-       <div class="muted">visitor: ${escapeHtml(c.visitor_id || "-")}</div>
-     `;
-     div.addEventListener("click", ()=> openChat(c));
-     box.appendChild(div);
-   }
- }
- 
- async function openChat(chat){
-   const chatId = typeof chat === "string" ? chat : chat?.id;
-   if(!chatId) return;
-   selectedChatId = chatId;
-   selectedChatName = typeof chat === "object" ? (chat.display_name || chat.id) : chatId;
-   $("#chatPlaceholder").style.display = "none";
-   $("#chatBox").style.display = "block";
-   $("#chatId").textContent = selectedChatName || chatId;
-   await refreshChatView();
-   startPolling();
- }
- 
- async function refreshChatView(){
-   if(!selectedChatId) return;
-   const messagesUrl = isAdmin()
-     ? `/api/admin/chats/${selectedChatId}/messages`
-@@ -358,50 +363,58 @@ function renderMessages(items){
-   }
-   box.scrollTop = box.scrollHeight;
- }
- 
- function startPolling(){
-   if(pollTimer) clearInterval(pollTimer);
-   pollTimer = setInterval(async ()=>{
-     try{ await refreshChatView(); } catch {}
-   }, 1500);
- }
- 
- async function takeover(){
-   if(!selectedChatId) return;
-   await api(`${chatApiBase()}/${selectedChatId}/takeover`, { method:"POST" });
-   await refreshChats();
-   await refreshChatView();
- }
- 
- async function release(){
-   if(!selectedChatId) return;
-   await api(`${chatApiBase()}/${selectedChatId}/release`, { method:"POST" });
-   await refreshChats();
-   await refreshChatView();
- }
- 
-+async function deleteChat(){
-+  if(!selectedChatId || !isAdmin()) return;
-+  if(!confirm("Удалить этот чат? Сообщения будут удалены без возможности восстановления.")) return;
-+  await api(`/api/admin/chats/${selectedChatId}`, { method:"DELETE" });
-+  resetChatView();
-+  await refreshChats();
-+}
-+
- async function sendHuman(e){
-   e.preventDefault();
-   if(!selectedChatId) return;
-   const textEl = $("#humanText");
-   const text = textEl.value.trim();
-   if(!text) return;
- 
+ async function fetchAssistantInstructions(projectId){
+   if(!isAdmin()) return null;
    try {
-     await takeover();
+     const data = await api(`/api/admin/projects/${projectId}/assistant-instructions`);
+     return data?.instructions || "";
    } catch (err) {
-     console.warn("takeover failed", err);
-     return;
+     console.warn("assistant instructions load failed", err);
+     return null;
    }
-   
-   await api(`${chatApiBase()}/${selectedChatId}/message`, {
+ }
+ 
+ async function api(path, opts={}){
+   const r = await fetch(path, { credentials:"include", ...opts });
+   const ct = r.headers.get("content-type")||"";
+   const data = ct.includes("application/json") ? await r.json() : await r.text();
+   if(!r.ok) throw Object.assign(new Error(data?.error || "api_error"), { data, status:r.status });
+   return data;
+ }
+ 
+ function escapeHtml(s){
+   return String(s)
+     .replaceAll("&","&amp;")
+     .replaceAll("<","&lt;")
+     .replaceAll(">","&gt;")
+     .replaceAll('"',"&quot;")
+     .replaceAll("'","&#039;");
+ }
+ 
+ function showPage(page){
+-  const pages = { chats: "#pageChats", settings: "#pageSettings", users: "#pageUsers" };
++  currentPage = page;
++  const pages = { chats: "#pageChats", settings: "#pageSettings", users: "#pageUsers", stats: "#pageStats" };
+   Object.entries(pages).forEach(([key, sel])=>{
+     const el = $(sel);
+     if(el) el.style.display = key === page ? "block" : "none";
+   });
+ }
+ 
+ function applyRoleVisibility(){
+   document.querySelectorAll(".adminOnly").forEach(el => {
+     el.style.display = isAdmin() ? "" : "none";
+   });
+ }
+ 
+ async function login(){
+   $("#loginErr").textContent = "";
+   const login = $("#login").value.trim();
+   const password = $("#password").value;
+   const session = await api("/api/admin/login", {
      method:"POST",
      headers:{ "Content-Type":"application/json" },
-     body: JSON.stringify({ text })
+     body: JSON.stringify({ login, password })
    });
-   textEl.value = "";
-   await refreshChatView();
+   currentSession = session;
+   applyRoleVisibility();
+   $("#loginBox").style.display = "none";
+   $("#app").style.display = "flex";
+@@ -87,90 +89,121 @@ async function logout(){
+ async function refreshProjects(autoSelectFirst=false){
+   const j = await api(projectApiBase());
+   const items = j.items || [];
+   projectsCache = items;
+   const sel = $("#projectSelect");
+   sel.innerHTML = "";
+   for(const p of items){
+     const opt = document.createElement("option");
+     opt.value = p.id;
+     opt.textContent = p.name;
+     sel.appendChild(opt);
+   }
+ 
+   if(autoSelectFirst && items[0]){
+     selectedProjectId = items[0].id;
+     sel.value = selectedProjectId;
+   } else if(selectedProjectId){
+     sel.value = selectedProjectId;
+   } else if(items[0]){
+     selectedProjectId = items[0].id;
+     sel.value = selectedProjectId;
+   }
+ 
+   if(selectedProjectId) await loadProject(selectedProjectId);
+   await refreshChats();
++  if(currentPage === "stats") await refreshStats();
  }
  
- function resetChatView(){
-   selectedChatId = null;
-@@ -506,35 +519,36 @@ async function createUserFromForm(e){
+ async function createProject(){
+   const name = prompt("Название проекта", "Новый проект")?.trim();
+   if(!name) return;
+   const j = await api(projectApiBase(), {
+     method:"POST",
+     headers:{ "Content-Type":"application/json" },
+     body: JSON.stringify({ name, openai_api_key:"", assistant_id:"", instructions:"", allowed_origins:[] })
+   });
+   selectedProjectId = j.project.id;
+   await refreshProjects(false);
+   $("#projectSelect").value = selectedProjectId;
+   await loadProject(selectedProjectId);
+   if(isAdmin()) await refreshChats();
+ }
+ 
+ async function loadProject(projectId){
+   const j = await api(`${projectApiBase()}/${projectId}`);
+   const p = j.project;
+   selectedProjectId = p.id;
+   currentProjectOwnerId = p.owner_id || null;
+ 
+   const projectName = projectsCache.find(x => x.id === p.id)?.name || "Проект";
+   $("#projectBadge").textContent = projectName;
+   $("#projectId").textContent = p.id;
+   $("#apiKey").value = p.openai_api_key || "";
+   $("#assistantId").value = p.assistant_id || "";
+   let instructions = p.instructions || "";
+   if(isAdmin() && p.assistant_id){
+     const ai = await fetchAssistantInstructions(p.id);
+     if(typeof ai === "string" && ai) instructions = ai;
+   }
+   $("#instructions").value = instructions;
+   $("#origins").value = (p.allowed_origins || []).join("\n");
+ 
+   if(isAdmin()) renderOwnerSelect(currentProjectOwnerId);
+   renderTelegramSection(p);
+ }
+ 
++async function refreshStats(){
++  if(!selectedProjectId) return;
++  $("#statsErr").textContent = "";
++  const base = isAdmin() ? "/api/admin/projects" : "/api/user/projects";
++  try {
++    const j = await api(`${base}/${selectedProjectId}/stats`);
++    renderStats(j.stats);
++  } catch (err) {
++    $("#statsErr").textContent = "Не удалось загрузить статистику проекта.";
++  }
++}
++
++function renderStats(stats){
++  const totalChats = stats?.totalChats ?? 0;
++  const chatsWithContacts = stats?.chatsWithContacts ?? 0;
++  const avgQuestions = stats?.avgQuestionsPerChat ?? 0;
++  const avgFormatted = Number.isFinite(avgQuestions)
++    ? avgQuestions.toLocaleString("ru-RU", { minimumFractionDigits: 1, maximumFractionDigits: 1 })
++    : "0";
++  $("#statsTotalChats").textContent = totalChats.toLocaleString("ru-RU");
++  $("#statsChatsWithContacts").textContent = chatsWithContacts.toLocaleString("ru-RU");
++  $("#statsAvgQuestions").textContent = avgFormatted;
++
++  const ratio = totalChats ? Math.min(1, chatsWithContacts / totalChats) : 0;
++  $("#statsContactsBar").style.width = `${Math.round(ratio * 100)}%`;
++  $("#statsContactsMeta").textContent = totalChats
++    ? `${Math.round(ratio * 100)}% чатов с контактами`
++    : "Нет данных для расчёта доли";
++}
++
+ async function saveProject(){
+   if(!selectedProjectId) return;
+   $("#saveOk").textContent = "";
+ 
+   const openai_api_key = $("#apiKey").value.trim();
+   const assistant_id = $("#assistantId").value.trim();
+   const instructions = $("#instructions").value;
+   const allowed_origins = $("#origins").value
+     .split("\n")
+     .map(s => s.trim())
+     .filter(Boolean);
+   const owner_id = isAdmin()
+     ? ($("#projectOwner")?.value?.trim() || null)
+     : undefined;
+ 
+   const url = `${projectApiBase()}/${selectedProjectId}`;
+ 
+   await api(url, {
+     method:"PATCH",
+     headers:{ "Content-Type":"application/json" },
+     body: JSON.stringify({ openai_api_key, assistant_id, instructions, allowed_origins, owner_id })
+   });
+ 
+   if(isAdmin()) currentProjectOwnerId = owner_id;
+   $("#saveOk").textContent = "Сохранено";
+@@ -517,38 +550,42 @@ async function createUserFromForm(e){
+     setTimeout(()=> $("#userOk").textContent = "", 2000);
+   } catch(err){
      const code = err?.data?.error || err?.message || "api_error";
      if(code === "user_exists"){
        $("#userErr").textContent = "Такой пользователь уже существует";
@@ -407,13 +523,17 @@ index e57f23c91d6c6d8ad466e2d91b85ee67ed750659..0b3492d6ceaccc12d4135c7cff462a73
    resetChatView();
    await loadProject(selectedProjectId);
    await refreshChats();
++  if(currentPage === "stats") await refreshStats();
  });
  $("#btnRelease").addEventListener("click", ()=> release().catch(()=>{}));
-+$("#btnDeleteChat").addEventListener("click", ()=> deleteChat().catch(()=>{}));
+ $("#btnDeleteChat").addEventListener("click", ()=> deleteChat().catch(()=>{}));
  $("#humanForm").addEventListener("submit", sendHuman);
  $("#btnOpenSettings").addEventListener("click", ()=> showPage("settings"));
  $("#btnBackToChats").addEventListener("click", ()=> showPage("chats"));
++$("#btnOpenStats").addEventListener("click", ()=>{ showPage("stats"); refreshStats().catch(()=>{}); });
  $("#btnOpenUsers").addEventListener("click", ()=>{ showPage("users"); refreshUsers().catch(()=>{}); });
++$("#btnRefreshStats").addEventListener("click", ()=> refreshStats().catch(()=>{}));
++$("#btnBackFromStats").addEventListener("click", ()=> showPage("chats"));
  $("#btnLinkTelegram").addEventListener("click", ()=> linkTelegram().catch(()=>{}));
  $("#btnUnlinkTelegram").addEventListener("click", ()=> unlinkTelegram().catch(()=>{}));
  $("#userForm").addEventListener("submit", (e)=> createUserFromForm(e).catch(()=>{}));
@@ -421,10 +541,45 @@ index e57f23c91d6c6d8ad466e2d91b85ee67ed750659..0b3492d6ceaccc12d4135c7cff462a73
  
  showPage("chats");
 diff --git a/web-admin/index.html b/web-admin/index.html
-index c3c96e70a7acb9a58dc407e10c518ad404f28961..ded12aaea03e42e908bd9aaf7dd95ba857737a2a 100644
+index ded12aaea03e42e908bd9aaf7dd95ba857737a2a..8419ec91f8965385870b3fd26162dcf14945a775 100644
 --- a/web-admin/index.html
 +++ b/web-admin/index.html
-@@ -69,50 +69,51 @@
+@@ -35,50 +35,51 @@
+             <button id="btnRefreshProjects" class="icon ghost" title="Обновить">⟳</button>
+           </div>
+           <select id="projectSelect"></select>
+         </div>
+ 
+         <div class="topbarSection adminOnly">
+           <div class="labelRow">
+             <label>Фильтр чатов</label>
+             <button id="btnRefreshChats" class="icon ghost" title="Обновить">⟳</button>
+           </div>
+           <div class="row tight">
+             <select id="filterMode">
+               <option value="">Все режимы</option>
+               <option value="assistant">assistant</option>
+               <option value="human">human</option>
+             </select>
+             <select id="filterStatus">
+               <option value="">Все статусы</option>
+               <option value="open">open</option>
+               <option value="closed">closed</option>
+             </select>
+           </div>
+         </div>
+ 
+         <div class="topbarActions">
++          <button id="btnOpenStats" class="ghost">Статистика</button>
+           <button id="btnOpenUsers" class="ghost adminOnly">Пользователи</button>
+           <button id="btnOpenSettings" class="ghost">Настройки проекта</button>
+           <button id="btnLogout" class="ghost text">Выйти</button>
+         </div>
+       </header>
+ 
+       <main class="content">
+         <section id="pageChats" class="page">
+           <div class="pageHead">
              <div>
                <p class="eyebrow">Работа с чатами</p>
                <h2>Чаты из виджета</h2>
@@ -441,38 +596,91 @@ index c3c96e70a7acb9a58dc407e10c518ad404f28961..ded12aaea03e42e908bd9aaf7dd95ba8
                <div id="chatList" class="list"></div>
              </div>
  
-             <div class="chatBox card" id="chatBox" style="display:none">
-               <div class="cardHead">
-                 <div>
-                   <p class="eyebrow">Активный чат</p>
-                   <h3 class="mono" id="chatId"></h3>
-                 </div>
-                 <div class="row">
-                   <span class="pill" id="chatMode"></span>
-                   <button id="btnRelease" class="ghost">Передать ИИ</button>
-+                  <button id="btnDeleteChat" class="ghost danger adminOnly">Удалить чат</button>
-                 </div>
+@@ -166,50 +167,87 @@
+                 <div id="telegramStatus" class="pill muted">Не подключено</div>
+                 <div class="muted" id="telegramInfo" style="margin-top:6px"></div>
                </div>
- 
-               <div id="messages" class="msgs"></div>
- 
-               <form id="humanForm" class="row" style="margin-top:10px">
-                 <input id="humanText" placeholder="Ответить как оператор..." />
-                 <button type="submit">Отправить</button>
-               </form>
-               <div class="muted" style="margin-top:8px">
-                 Human-ответ сохраняется и синхронизируется в OpenAI thread как <b>[OPERATOR] ...</b>
+               <div>
+                 <label class="muted">Telegram код (из бота)</label>
+                 <div class="row tight">
+                   <input id="telegramCode" placeholder="секретный код" />
+                   <button id="btnLinkTelegram" type="button">Привязать</button>
+                   <button id="btnUnlinkTelegram" type="button" class="ghost">Отвязать</button>
+                 </div>
+                 <div class="row" style="justify-content:space-between;margin-top:6px">
+                   <span id="telegramErr" class="err"></span>
+                   <span id="telegramOk" class="ok"></span>
+                 </div>
                </div>
              </div>
  
-             <div class="placeholder" id="chatPlaceholder">
-               <div class="empty">
-                 <p class="eyebrow">Нет выбранного чата</p>
-                 <h3>Выберите чат слева, чтобы открыть переписку</h3>
-                 <p class="muted">Чаты обновляются в реальном времени. Используйте фильтры в панели сверху.</p>
-               </div>
+             <div class="row">
+               <button id="btnSaveProject">Сохранить</button>
+               <button id="btnDeleteProject" class="ghost">Удалить проект</button>
+               <span id="saveOk" class="ok"></span>
              </div>
            </div>
          </section>
  
-         <section id="pageSettings" class="page" style="display:none">
++        <section id="pageStats" class="page" style="display:none">
++          <div class="pageHead">
++            <div>
++              <p class="eyebrow">Статистика проекта</p>
++              <h2>Дашборд</h2>
++              <p class="muted">Ключевые метрики по чатам и вовлечённости пользователей.</p>
++            </div>
++            <div class="row">
++              <button id="btnRefreshStats" class="ghost">Обновить</button>
++              <button id="btnBackFromStats" class="ghost">← Назад</button>
++            </div>
++          </div>
++
++          <div class="statsGrid">
++            <div class="statCard">
++              <div class="statLabel">Общее количество чатов</div>
++              <div class="statValue" id="statsTotalChats">—</div>
++              <div class="statHint">Все диалоги внутри выбранного проекта.</div>
++            </div>
++            <div class="statCard">
++              <div class="statLabel">Чаты с контактами</div>
++              <div class="statValue" id="statsChatsWithContacts">—</div>
++              <div class="statHint">Пользователи оставили email, телефон или мессенджер.</div>
++              <div class="statTrend">
++                <div class="statBar"><span id="statsContactsBar"></span></div>
++                <div class="statMeta" id="statsContactsMeta"></div>
++              </div>
++            </div>
++            <div class="statCard">
++              <div class="statLabel">Среднее число вопросов</div>
++              <div class="statValue" id="statsAvgQuestions">—</div>
++              <div class="statHint">Количество пользовательских сообщений на чат.</div>
++            </div>
++          </div>
++          <div id="statsErr" class="err"></div>
++        </section>
++
+         <section id="pageUsers" class="page adminOnly" style="display:none">
+           <div class="pageHead">
+             <div>
+               <p class="eyebrow">Пользователи</p>
+               <h2>Создание и просмотр пользователей</h2>
+               <p class="muted">Администратор может добавлять аккаунты для работы в системе.</p>
+             </div>
+             <div class="row">
+               <button id="btnBackFromUsers" class="ghost">← Назад</button>
+             </div>
+           </div>
+ 
+           <div class="card" style="display:flex;flex-direction:column;gap:12px">
+             <form id="userForm" class="formGrid" style="align-items:flex-end">
+               <div>
+                 <label class="muted">Email пользователя</label>
+                 <input id="newUserEmail" placeholder="user@example.com" type="email" required />
+               </div>
+               <div>
+                 <label class="muted">Пароль</label>
+                 <input id="newUserPassword" placeholder="Пароль" type="password" required />
+               </div>
+               <div>
+                 <label class="muted">&nbsp;</label>
+                 <button type="submit" class="primary full">Создать</button>

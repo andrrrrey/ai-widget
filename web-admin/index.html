@@ -57,6 +57,7 @@
         </div>
 
         <div class="topbarActions">
+          <button id="btnOpenStats" class="ghost">Статистика</button>
           <button id="btnOpenUsers" class="ghost adminOnly">Пользователи</button>
           <button id="btnOpenSettings" class="ghost">Настройки проекта</button>
           <button id="btnLogout" class="ghost text">Выйти</button>
@@ -186,6 +187,43 @@
               <span id="saveOk" class="ok"></span>
             </div>
           </div>
+        </section>
+
+        <section id="pageStats" class="page" style="display:none">
+          <div class="pageHead">
+            <div>
+              <p class="eyebrow">Статистика проекта</p>
+              <h2>Дашборд</h2>
+              <p class="muted">Ключевые метрики по чатам и вовлечённости пользователей.</p>
+            </div>
+            <div class="row">
+              <button id="btnRefreshStats" class="ghost">Обновить</button>
+              <button id="btnBackFromStats" class="ghost">← Назад</button>
+            </div>
+          </div>
+
+          <div class="statsGrid">
+            <div class="statCard">
+              <div class="statLabel">Общее количество чатов</div>
+              <div class="statValue" id="statsTotalChats">—</div>
+              <div class="statHint">Все диалоги внутри выбранного проекта.</div>
+            </div>
+            <div class="statCard">
+              <div class="statLabel">Чаты с контактами</div>
+              <div class="statValue" id="statsChatsWithContacts">—</div>
+              <div class="statHint">Пользователи оставили email, телефон или мессенджер.</div>
+              <div class="statTrend">
+                <div class="statBar"><span id="statsContactsBar"></span></div>
+                <div class="statMeta" id="statsContactsMeta"></div>
+              </div>
+            </div>
+            <div class="statCard">
+              <div class="statLabel">Среднее число вопросов</div>
+              <div class="statValue" id="statsAvgQuestions">—</div>
+              <div class="statHint">Количество пользовательских сообщений на чат.</div>
+            </div>
+          </div>
+          <div id="statsErr" class="err"></div>
         </section>
 
         <section id="pageUsers" class="page adminOnly" style="display:none">

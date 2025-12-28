@@ -221,3 +221,43 @@ export async function deleteChat(chatId) {
   await sql.exec("DELETE FROM chats WHERE id=$1", [chatId]);
   return true;
 }
+
+export async function getProjectStats(projectId) {
+  const base = await sql.one(
+    `SELECT
+       COUNT(*)::int AS total_chats,
+       COALESCE(SUM(msgs.user_messages), 0)::int AS total_user_messages
+     FROM chats c
+     LEFT JOIN (
+       SELECT chat_id, COUNT(*)::int AS user_messages
+       FROM messages
+       WHERE role='user'
+       GROUP BY chat_id
+     ) AS msgs ON msgs.chat_id = c.id
+     WHERE c.project_id=$1`,
+    [projectId]
+  );
+
+  const contactPattern =
+    "([A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}|\\+?\\d[\\d\\s().-]{6,}\\d|(?:^|\\s)@[a-zA-Z0-9_]{5,}|t\\.me/[a-zA-Z0-9_]+|wa\\.me/\\d+|(?:телеграм|telegram|tg)[:\\s]+[\\w@.+-]{3,}|(?:whatsapp|ватсап|ватап)[:\\s]+[\\w@.+-]{3,})";
+
+  const contactRow = await sql.one(
+    `SELECT COUNT(DISTINCT c.id)::int AS count
+     FROM chats c
+     JOIN messages m ON m.chat_id = c.id
+     WHERE c.project_id=$1
+       AND m.role='user'
+       AND m.content ~* $2`,
+    [projectId, contactPattern]
+  );
+
+  const totalChats = base?.total_chats ?? 0;
+  const totalUserMessages = base?.total_user_messages ?? 0;
+  const avgQuestionsPerChat = totalChats ? totalUserMessages / totalChats : 0;
+
+  return {
+    totalChats,
+    chatsWithContacts: contactRow?.count ?? 0,
+    avgQuestionsPerChat,
+  };
+}
