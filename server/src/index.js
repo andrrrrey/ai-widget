@@ -5,7 +5,15 @@ import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 
 import { ensureSchema, pool } from "./lib/db.js";
-import { requireAdmin, requireUser, loginHandler, logoutHandler, hashPassword } from "./lib/auth.js";
+import {
+  requireAdmin,
+  requireAuth,
+  requireUser,
+  loginHandler,
+  logoutHandler,
+  hashPassword,
+  sessionHandler,
+} from "./lib/auth.js";
 import {
   createUser,
   listUsers,
@@ -210,6 +218,7 @@ app.get("/api/widget/:projectId/chat/:chatId/stream", widgetCors, async (req, re
  */
 app.post("/api/admin/login", loginHandler);
 app.post("/api/admin/logout", logoutHandler);
+app.get("/api/admin/session", requireAuth, sessionHandler);
 
 // Projects CRUD
 app.get("/api/admin/projects", requireAdmin, async (req, res) => {

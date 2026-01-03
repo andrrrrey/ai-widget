@@ -96,3 +96,17 @@ export function logoutHandler(req, res) {
   });
   res.json({ ok: true });
 }
+
+export async function sessionHandler(req, res) {
+  const role = req.auth?.role;
+  if (!role) return res.status(401).json({ error: "unauthorized" });
+
+  if (role === "admin") {
+    return res.json({ ok: true, role: "admin" });
+  }
+
+  const user = await findUserByEmail(req.auth?.login);
+  if (!user) return res.status(401).json({ error: "unauthorized" });
+
+  return res.json({ ok: true, role: user.role || "user", user: { id: user.id, email: user.email } });
+}

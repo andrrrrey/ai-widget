@@ -86,6 +86,22 @@ async function logout(){
   location.reload();
 }
 
+async function restoreSession(){
+  try {
+    const session = await api("/api/admin/session");
+    currentSession = session;
+    applyRoleVisibility();
+    $("#loginBox").style.display = "none";
+    $("#app").style.display = "flex";
+    showPage("chats");
+    if(isAdmin()) await refreshUsers();
+    await refreshProjects(true);
+  } catch (err) {
+    $("#loginBox").style.display = "block";
+    $("#app").style.display = "none";
+  }
+}
+
 async function refreshProjects(autoSelectFirst=false){
   const j = await api(projectApiBase());
   const items = j.items || [];
@@ -589,3 +605,4 @@ $("#userForm").addEventListener("submit", (e)=> createUserFromForm(e).catch(()=>
 $("#btnBackFromUsers").addEventListener("click", ()=> showPage("chats"));
 
 showPage("chats");
+restoreSession();
