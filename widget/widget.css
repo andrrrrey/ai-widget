@@ -329,6 +329,76 @@
 
 .aiw-status{ font-size: 13px; color: var(--aiw-muted); min-height: 18px; text-align:center; }
 
+.aiw-notify-badge{
+  position:absolute;
+  top:-15px;
+  right:-4px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #ff3b30;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 6px 12px rgba(0,0,0,.18);
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  pointer-events: none;
+}
+
+.aiw-notify-bubble{
+  position: absolute;
+  bottom: 80px;
+  right: -2px;
+  background: rgba(255,255,255,.72);
+  border: 1px solid rgba(0,0,0,.08);
+  color: #1a1b1f;
+  font-size: 13px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  box-shadow: 0 12px 26px rgba(0,0,0,.12);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  opacity: 0;
+  transform: translateY(6px) scale(0.98);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.aiw-fab.aiw-left .aiw-notify-bubble{
+  left: -6px;
+  right: auto;
+}
+
+.aiw-notify-bubble::after{
+  content:"";
+  position: absolute;
+  bottom: -8px;
+  right: 20px;
+  width: 14px;
+  height: 14px;
+  background: inherit;
+  border-right: 1px solid rgba(0,0,0,.08);
+  border-bottom: 1px solid rgba(0,0,0,.08);
+  transform: rotate(45deg);
+  border-radius: 2px;
+}
+
+.aiw-fab.aiw-left .aiw-notify-bubble::after{
+  left: 20px;
+  right: auto;
+}
+
+.aiw-notify-show{
+  opacity: 1;
+  transform: none;
+}
+
 @media (max-width: 900px){
   .aiw-shell{padding: 40px 18px 18px;}
   .aiw-hero{padding-top: 28px;}

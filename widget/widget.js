@@ -33,6 +33,16 @@
   const btn = document.createElement("button");
   btn.className = "aiw-fab " + (position === "left" ? "aiw-left" : "aiw-right");
   btn.innerHTML = "💬";
+  const notifyBadge = document.createElement("span");
+  notifyBadge.className = "aiw-notify-badge";
+  notifyBadge.textContent = "1";
+
+  const notifyBubble = document.createElement("div");
+  notifyBubble.className = "aiw-notify-bubble";
+  notifyBubble.textContent = "Спроси здесь ИИ";
+
+  btn.appendChild(notifyBadge);
+  btn.appendChild(notifyBubble);  
 
   const overlay = document.createElement("div");
   overlay.className = "aiw-overlay";
@@ -356,4 +366,9 @@
   msgs.addEventListener("scroll", () => {
     shouldAutoScroll = isAtBottom();
   });
+  
+  setTimeout(() => {
+    notifyBadge.classList.add("aiw-notify-show");
+    notifyBubble.classList.add("aiw-notify-show");
+  }, 3000);  
 })();
