@@ -3,13 +3,29 @@
   const projectId = script.getAttribute("data-project-id");
   const title = script.getAttribute("data-title") || "Чат с помощником";
   const position = script.getAttribute("data-position") || "right";
-
+  const embed = script.getAttribute("data-embed") === "true";
+  const embedWidth = script.getAttribute("data-embed-width");
+  const embedHeight = script.getAttribute("data-embed-height");
+  const embedCenter = script.getAttribute("data-embed-center") === "true";
+  
   if (!projectId) {
     console.error("[ai-widget] data-project-id is required");
     return;
   }
 
-  const BASE = new URL(script.src).origin; // https://loginof.futuguru.com
+  if (embed) {
+    document.documentElement.style.height = "100%";
+    document.body.style.height = "100%";
+    document.body.style.margin = "0";
+    document.body.style.overflow = "hidden";
+    if (embedCenter) {
+      document.body.style.display = "flex";
+      document.body.style.alignItems = "center";
+      document.body.style.justifyContent = "center";
+    }
+  }
+  
+  const BASE = new URL(script.src).origin;
 
   // Load CSS
   const cssUrl = BASE + "/widget/widget.css";
@@ -29,31 +45,43 @@
   let chatId = null;
   let isOpen = false;
 
-  // UI
-  const btn = document.createElement("button");
-  btn.className = "aiw-fab " + (position === "left" ? "aiw-left" : "aiw-right");
-  btn.innerHTML = "💬";
-  const notifyBadge = document.createElement("span");
-  notifyBadge.className = "aiw-notify-badge";
-  notifyBadge.textContent = "1";
+ // UI
+  let btn = null;
+  let overlay = null;
+  let overlayClose = null;
+  let notifyBadge = null;
+  let notifyBubble = null;
 
-  const notifyBubble = document.createElement("div");
-  notifyBubble.className = "aiw-notify-bubble";
-  notifyBubble.textContent = "Спроси здесь ИИ";
+  if (!embed) {
+    btn = document.createElement("button");
+    btn.className = "aiw-fab " + (position === "left" ? "aiw-left" : "aiw-right");
+    btn.innerHTML = "💬";
+    notifyBadge = document.createElement("span");
+    notifyBadge.className = "aiw-notify-badge";
+    notifyBadge.textContent = "1";
 
-  btn.appendChild(notifyBadge);
-  btn.appendChild(notifyBubble);  
+    notifyBubble = document.createElement("div");
+    notifyBubble.className = "aiw-notify-bubble";
+    notifyBubble.textContent = "Спроси здесь ИИ";
 
-  const overlay = document.createElement("div");
-  overlay.className = "aiw-overlay";
+    btn.appendChild(notifyBadge);
+    btn.appendChild(notifyBubble);
 
-  const overlayClose = document.createElement("button");
-  overlayClose.className = "aiw-overlay-close";
-  overlayClose.setAttribute("aria-label", "Закрыть окно чата");
-  overlayClose.textContent = "✕";
+    overlay = document.createElement("div");
+    overlay.className = "aiw-overlay";
+
+    overlayClose = document.createElement("button");
+    overlayClose.className = "aiw-overlay-close";
+    overlayClose.setAttribute("aria-label", "Закрыть окно чата");
+    overlayClose.textContent = "✕";
+  }
 
   const panel = document.createElement("div");
   panel.className = "aiw-panel";
+  if (embed) panel.classList.add("aiw-embed");
+  if (embedWidth) panel.style.width = embedWidth;
+  if (embedHeight) panel.style.height = embedHeight;
+  if (embed && embedCenter) panel.style.margin = "0";
   panel.innerHTML = `
     <div class="aiw-shell">
       <div class="aiw-hero">
@@ -87,9 +115,9 @@
     </div>
   `;
 
-  document.body.appendChild(btn);
-  document.body.appendChild(overlay);
-  document.body.appendChild(overlayClose);
+  if (btn) document.body.appendChild(btn);
+  if (overlay) document.body.appendChild(overlay);
+  if (overlayClose) document.body.appendChild(overlayClose);
   document.body.appendChild(panel);
 
   const form = panel.querySelector("#aiw-form");
@@ -319,9 +347,9 @@
 
   async function openPanel() {
     isOpen = true;
-    btn.classList.add("aiw-hide");
-    overlay.classList.add("aiw-show");
-    overlayClose.classList.add("aiw-visible");
+    if (btn) btn.classList.add("aiw-hide");
+    if (overlay) overlay.classList.add("aiw-show");
+    if (overlayClose) overlayClose.classList.add("aiw-visible");
     panel.classList.add("aiw-open");
     try {
       await ensureChat();
@@ -335,19 +363,21 @@
 
   function closePanel() {
     isOpen = false;
-    overlay.classList.remove("aiw-show");
-    overlayClose.classList.remove("aiw-visible");
+    if (overlay) overlay.classList.remove("aiw-show");
+    if (overlayClose) overlayClose.classList.remove("aiw-visible");
     panel.classList.remove("aiw-open");
     stopPollingMessages();
-    setTimeout(() => btn.classList.remove("aiw-hide"), 200);
+    if (btn) setTimeout(() => btn.classList.remove("aiw-hide"), 200);
   }
 
-  btn.addEventListener("click", async () => {
-    if (isOpen) closePanel();
-    else await openPanel();
-  });
+  if (btn) {
+    btn.addEventListener("click", async () => {
+      if (isOpen) closePanel();
+      else await openPanel();
+    });
+  }
 
-  overlayClose.addEventListener("click", closePanel);
+  if (overlayClose) overlayClose.addEventListener("click", closePanel);
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -367,8 +397,14 @@
     shouldAutoScroll = isAtBottom();
   });
   
-  setTimeout(() => {
-    notifyBadge.classList.add("aiw-notify-show");
-    notifyBubble.classList.add("aiw-notify-show");
-  }, 3000);  
+  if (notifyBadge && notifyBubble) {
+    setTimeout(() => {
+      notifyBadge.classList.add("aiw-notify-show");
+      notifyBubble.classList.add("aiw-notify-show");
+    }, 3000);
+  }
+
+  if (embed) {
+    openPanel();
+  }
 })();
