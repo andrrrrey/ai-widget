@@ -158,6 +158,22 @@
     });
   }
 
+  function renderMarkdown(text) {
+    const escaped = text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+    return escaped.replace(
+      /\[([^\]]*)\]\((https?:\/\/[^)]*)\)|(https?:\/\/[^\s<")\]]+)/g,
+      (_, linkText, linkUrl, plainUrl) => {
+        const url = linkUrl || plainUrl;
+        const label = linkText || url;
+        return `<a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+      }
+    );
+  }
+
   function setRole(el, role) {
     const isUser = role === "user";
     el.className = "aiw-msg " + (isUser ? "aiw-right" : "aiw-left");
@@ -175,7 +191,11 @@
     const bubble = document.createElement("div");
     bubble.className = "aiw-bubble";
     const p = document.createElement("p");
-    p.textContent = text;
+    if (role === "user") {
+      p.textContent = text;
+    } else {
+      p.innerHTML = renderMarkdown(text);
+    }
     bubble.appendChild(p);
 
     item.appendChild(label);
@@ -218,7 +238,11 @@
         setRole(existing, item.role);
         const bubbleText = existing.querySelector(".aiw-bubble p");
         if (bubbleText && bubbleText.textContent !== item.content) {
-          bubbleText.textContent = item.content;
+          if (item.role === "user") {
+            bubbleText.textContent = item.content;
+          } else {
+            bubbleText.innerHTML = renderMarkdown(item.content);
+          }
         }
       } else {
         append(item.role, item.content, { forceScroll: wasAtBottom });
@@ -319,7 +343,7 @@
       }
 
       streamState.acc += t;
-      streamState.assistantPEl.textContent = streamState.acc;
+      streamState.assistantPEl.innerHTML = renderMarkdown(streamState.acc);
 
       // автоскролл без smooth, иначе “прыжки”
       scheduleScrollDuringStream();

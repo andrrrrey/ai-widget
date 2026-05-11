@@ -267,6 +267,16 @@
   white-space: pre-line;
 }
 
+.aiw-bubble p a{
+  color: #5d5af6;
+  text-decoration: underline;
+  word-break: break-all;
+}
+
+.aiw-bubble p a:hover{
+  opacity: 0.75;
+}
+
 .aiw-composerWrap{ flex: 0 0 auto; display:flex; justify-content:center; padding-top: 10px; }
 
 .aiw-composer{
